@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:key="main_prefs"
+    android:title="@string/settings">
+
+    <PreferenceCategory
+        android:key="telemetry_prefs"
+        android:title="@string/telemetry_settings">
+
+        <androidx.preference.SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="pref_mqtt_enabled"
+            android:title="@string/pref_mqtt" />
+        <androidx.preference.EditTextPreference
+            android:defaultValue="tcp://example.com:1883"
+            android:dependency="pref_mqtt_enabled"
+            android:key="pref_mqtt_hosturl"
+            android:title="@string/pref_mqtt_host" />
+        <androidx.preference.EditTextPreference
+            android:defaultValue="rosetta"
+            android:dependency="pref_mqtt_enabled"
+            android:key="pref_mqtt_topicdef"
+            android:title="@string/pref_mqtt_topic" />
+        <androidx.preference.EditTextPreference
+            android:defaultValue="rosetta"
+            android:dependency="pref_mqtt_enabled"
+            android:key="pref_mqtt_clientdef"
+            android:title="@string/pref_mqtt_clientid" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:key="video_prefs"
+        android:title="@string/video_settings">
+
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="pref_enable_video"
+            android:title="@string/pref_enable_video"
+            android:defaultValue="true" />
+
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="pref_enable_dualvideo"
+            android:title="@string/pref_enable_dualvideo"
+            android:defaultValue="false" />
+
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="pref_separate_gcs"
+            android:dependency="pref_enable_video"
+            android:title="@string/pref_separate_gcs"
+            android:defaultValue="false" />
+
+        <androidx.preference.EditTextPreference
+            android:defaultValue="127.0.0.1"
+            android:dependency="pref_separate_gcs"
+            android:digits="0123456789."
+            android:inputType="number"
+            android:key="pref_video_ip"
+            android:title="@string/pref_video_ip" />
+        <androidx.preference.EditTextPreference
+            android:defaultValue="5600"
+            android:dependency="pref_enable_video"
+            android:key="pref_video_port"
+            android:title="@string/pref_video_port" />
+        <androidx.preference.EditTextPreference
+            android:defaultValue="2"
+            android:dependency="pref_enable_video"
+            android:key="pref_video_bitrate"
+            android:title="@string/pref_video_bitrate" />
+        <androidx.preference.ListPreference
+            android:key="pref_encode_speed"
+            android:dependency="pref_enable_video"
+            android:title="@string/pref_encode_speed"
+            android:entries="@array/video_encode_array"
+            android:entryValues="@array/video_encode_values_array"
+            android:defaultValue="2" />
+
+    </PreferenceCategory>
+</androidx.preference.PreferenceScreen>

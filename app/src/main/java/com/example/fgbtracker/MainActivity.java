@@ -3,6 +3,7 @@ package com.example.fgbtracker;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
@@ -12,8 +13,10 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import androidx.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -79,6 +82,9 @@ import fgbtracker.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
+    public static boolean FLAG_PREFS_CHANGED = false;
+    public static boolean FLAG_TELEMETRY_ADDRESS_CHANGED = false;
+    public static boolean FLAG_VIDEO_ADDRESS_CHANGED = false;
     private ActivityMainBinding binding;
     private static final String TAG = MainActivity.class.getName();
     public static final String FLAG_CONNECTION_CHANGE = "dji_sdk_connection_change";
@@ -102,11 +108,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.READ_PHONE_STATE,
     };
-    private List<String> missingPermission = new ArrayList<>();
-    private AtomicBoolean isRegistrationInProgress = new AtomicBoolean(false);
-    private AtomicBoolean isRunning = new AtomicBoolean(false);
+    private final List<String> missingPermission = new ArrayList<>();
+    private final AtomicBoolean isRegistrationInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
     private Subscription timerSubcription;
-    private Observable<Long> timer =Observable.timer(100, TimeUnit.MILLISECONDS).observeOn(Schedulers.computation()).repeat();
+    private final Observable<Long> timer =Observable.timer(100, TimeUnit.MILLISECONDS).observeOn(Schedulers.computation()).repeat();
 
     private static final int REQUEST_PERMISSION_CODE = 12345;
     private TextView mHeadingText;
@@ -138,9 +144,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private LocationCallback locationCallback;
     private FusedLocationProviderClient mFusedLocationClient;
     private LocationRequest locationRequest;
+    private SharedPreferences prefs;
 
     private float deltaLatM;
     private float deltaLonM;
+
+    public static boolean FLAG_MQTT_HOST_CHANGED = false;
+    public static boolean FLAG_MQTT_TOPIC_CHANGED = false;
+    public MQTTClient mMQTTclient;
 
     private void getLocation() {
         if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -166,7 +177,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -182,6 +193,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 isGPS = isGPSEnable;
             }
         });
+
+        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+        prefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+
         // Debuglogs to file
         String filePath = Environment.getExternalStorageDirectory() + "/logcat.txt";
         try {
@@ -238,6 +253,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         };
         getLocation();
+
+        // MQTT Client
+        if(prefs.getBoolean("pref_mqtt_enabled", true)) {
+            mMQTTclient = new MQTTClient(this, prefs.getString("pref_mqtt_hosturl", "tcp://flexigrobots.collab-cloud.eu:1883"), "dronetracker");
+            mMQTTclient.setTopic(prefs.getString("pref_mqtt_topicdef", "/54321/drone01/#"));
+            mMQTTclient.connect();
+        }
+    }
+    // Method for reinitiating MQTT Client and connection
+    private void updateMQTTConnection() {
+        if(prefs.getBoolean("pref_mqtt_enabled", false)) {
+            this.mMQTTclient.disconnect();
+            this.mMQTTclient = null;
+            this.mMQTTclient = new MQTTClient(this, prefs.getString("pref_mqtt_hosturl", "tcp://mqtt.example.com:1883"), "rosetta");
+            this.mMQTTclient.setTopic(prefs.getString("pref_mqtt_topicdef", "rosetta"));
+            this.mMQTTclient.connect();
+            FLAG_MQTT_HOST_CHANGED = false;
+            FLAG_MQTT_TOPIC_CHANGED = false;
+        }
+    }
+
+    public void parseMqttMessage(String s) {
+        Log.d(TAG, "receoived MQTT message: "+ s);
     }
 
     /**
@@ -389,7 +427,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mHandler.postDelayed(updateRunnable, 500);
     }
 
-    private Runnable updateRunnable = new Runnable() {
+    private final Runnable updateRunnable = new Runnable() {
 
         @Override
         public void run() {
@@ -569,60 +607,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.d(TAG, msg);
         }
     }
-/*
-    private Location getLastBestLocation() {
-            Location locationGPS = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            Location locationNet = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            Location returnLoc = null;
-            long GPSLocationTime = 0;
-            if (null != locationGPS) { GPSLocationTime = locationGPS.getTime(); }
 
-            long NetLocationTime = 0;
-
-            if (null != locationNet) {
-                NetLocationTime = locationNet.getTime();
-            }
-
-            if ( 0 < GPSLocationTime - NetLocationTime ) {
-                Log.d(TAG,"getLastBestLocation(GPS):"+locationGPS.getLatitude()+","+locationGPS.getLongitude());
-                returnLoc = locationGPS;
-            }
-            else {
-                Log.d(TAG,"getLastBestLocation(NET):"+locationNet.getLatitude()+","+locationNet.getLongitude());
-                returnLoc =  locationNet;
-            }
-            mFollowLocation = returnLoc;
-            mFollowLocationTS = System.currentTimeMillis();
-            return returnLoc;
-    }
- */
-    private void setupFollowMeMission() {
-        followmeOperator = DJISDKManager.getInstance().getMissionControl().getFollowMeMissionOperator();
-        if (flightController != null) {
-            flightController.setStateCallback(new FlightControllerState.Callback() {
-                @Override
-                public void onUpdate(@NonNull FlightControllerState flightControllerState) {
-                    homeLatitude = flightControllerState.getHomeLocation().getLatitude();
-                    latitude = flightControllerState.getHomeLocation().getLatitude();
-                    homeLongitude = flightControllerState.getHomeLocation().getLongitude();
-                    longitude = flightControllerState.getHomeLocation().getLongitude();
-                    flightState = flightControllerState.getFlightMode();
-
-                    if (flightControllerState.isLandingConfirmationNeeded()) {
-                        flightController.confirmLanding(new CommonCallbacks.CompletionCallback() {
-                            @Override
-                            public void onResult(DJIError djiError) {
-                                showToast(djiError == null ? "confirmLanding OK" : djiError.getDescription());
-                            }
-                        });
-                    }
-
-                    updateFollowMeMissionState();
-                }
-            });
-        }
-        setUpListener();
-    }
     private void initFC() {
         if (mProduct == null) {
             flightController = null;
@@ -647,7 +632,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                            //Log.d(TAG,"FlightControllerState.Callback onUpdate: " + flightController.getCompass().getHeading());
                             mDroneHeading = flightController.getCompass().getHeading();
                             mDroneLocation = state.getAircraftLocation();
-                            droneLocationTS = System.currentTimeMillis();
 
                             if (mHeadingText != null)
                                 mHeadingText.setText(String.format("%,03.1f°",mDroneHeading));
