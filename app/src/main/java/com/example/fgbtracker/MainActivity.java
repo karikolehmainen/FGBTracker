@@ -491,16 +491,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             sendVirtualStickDataTimer = new Timer();
             sendVirtualStickDataTimer.schedule(sendVirtualStickDataTask, 100, 200);
         }
-        Rotation.Builder builder = new Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).time(2);
-        builder.pitch(-90f);
-        mProduct.getGimbal().rotate(builder.build(), new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                showToast("Set Gimbal to -90 deg: " + (djiError == null ? "Successfully" : djiError.getDescription()));
-                if (djiError != null)
-                    Log.d(TAG, "Set Gimbal to -90 deg: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
-            }
-        });
+        setGimbalPitch(-90f);
+        startRecording();
     }
 
     private void stopFollowMeMissionVS() {
@@ -530,6 +522,42 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Log.d(TAG, djiError.getDescription());
                 else
                     Log.d(TAG, "Virtual Stick disabled");
+            }
+        });
+        stopRecording();
+    }
+
+    private void setGimbalPitch(float angle) {
+        Rotation.Builder builder = new Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).time(2);
+        builder.pitch(angle);
+        mProduct.getGimbal().rotate(builder.build(), new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                showToast("Set Gimbal to -90 deg: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+                if (djiError != null)
+                    Log.d(TAG, "Set Gimbal to -90 deg: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
+            }
+        });
+    }
+
+    private void startRecording() {
+        mProduct.getCamera().startRecordVideo(new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                showToast("start recording: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+                if (djiError != null)
+                    Log.d(TAG, "start recording: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
+            }
+        });
+    }
+
+    private void stopRecording() {
+        mProduct.getCamera().stopRecordVideo(new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                showToast("stop recording: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+                if (djiError != null)
+                    Log.d(TAG, "stop recording: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
             }
         });
     }
