@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">FGBTracker</string>
-    <string name="title_home">Home</string>
-    <string name="title_dashboard">Dashboard</string>
-    <string name="title_notifications">Notifications</string>
+    <string name="title_home">Drone</string>
+    <string name="title_dashboard">Logs</string>
+    <string name="title_notifications">Settings</string>
     <string name="playback_disconnected">Disconnected</string>
     <string name="flight_controller_listview_virtual_stick">Virtual Stick</string>
 
@@ -22,4 +22,5 @@
     <string name="pref_enable_video">Enable video feed</string>
     <string name="pref_enable_dualvideo">Enable second video feed on port+1</string>
     <string name="pref_separate_gcs">Separate video address from GCS</string>
+    <string name="title_settings">Settings</string>
 </resources>

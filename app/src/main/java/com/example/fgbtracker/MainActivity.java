@@ -58,11 +58,7 @@ import dji.common.flightcontroller.virtualstick.FlightControlData;
 import dji.common.flightcontroller.virtualstick.RollPitchControlMode;
 import dji.common.flightcontroller.virtualstick.VerticalControlMode;
 import dji.common.flightcontroller.virtualstick.YawControlMode;
-import dji.common.mission.followme.FollowMeHeading;
-import dji.common.mission.followme.FollowMeMission;
 import dji.common.mission.followme.FollowMeMissionEvent;
-import dji.common.mission.followme.FollowMeMissionState;
-import dji.common.model.LocationCoordinate2D;
 import dji.common.util.CommonCallbacks;
 import dji.sdk.flightcontroller.FlightController;
 import dji.sdk.base.BaseComponent;
@@ -152,6 +148,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public static boolean FLAG_MQTT_HOST_CHANGED = false;
     public static boolean FLAG_MQTT_TOPIC_CHANGED = false;
     public MQTTClient mMQTTclient;
+    private float targetAlt;
+    private float maxHorizontalSpeed;
 
     private void getLocation() {
         if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -436,6 +434,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     };
 
+    private void showToast(final String toastMsg) {
+        Log.d(TAG, "toast: " + toastMsg);
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(getApplicationContext(), toastMsg, Toast.LENGTH_LONG).show();
+            }
+        });
+
+    }
+
     private void setupVirtualController() {
         flightController.setVirtualStickModeEnabled(true, new CommonCallbacks.CompletionCallback() {
             @Override
@@ -459,23 +469,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             showToast("Virtual stick IS NOT available");
         }
     }
-    private void showToast(final String toastMsg) {
-        Log.d(TAG, "toast: " + toastMsg);
-        Handler handler = new Handler(Looper.getMainLooper());
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(getApplicationContext(), toastMsg, Toast.LENGTH_LONG).show();
-            }
-        });
 
+    private void startFollowMeMissionVS() {
+
+        targetAlt = prefs.getFloat("pref_target_alt",40.0f);
+        maxHorizontalSpeed = prefs.getFloat("pref_target_alt",5f);
+        if (null == positionObserverTimer) {
+            positionObserverTask = new PositionObserverTask();
+            positionObserverTimer = new Timer();
+            positionObserverTimer.schedule(positionObserverTask, 50, 200);
+        }
+
+        if (null == sendVirtualStickDataTimer) {
+            sendVirtualStickDataTask = new SendVirtualStickDataTask();
+            sendVirtualStickDataTimer = new Timer();
+            sendVirtualStickDataTimer.schedule(sendVirtualStickDataTask, 100, 200);
+        }
     }
-    private void stopFollowMeMission() {
-        followmeOperator.stopMission(djiError -> {
-            if (djiError != null)
-                showToast("stopFollowMeMission: "+djiError.getDescription()+ " ("+djiError.getErrorCode()+")");
-        });
-    }
+
     private void stopFollowMeMissionVS() {
         if (null != sendVirtualStickDataTimer) {
             if (sendVirtualStickDataTask != null) {
@@ -495,63 +506,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             positionObserverTimer = null;
             positionObserverTask = null;
         }
-    }
-    private void startFollowMeMission() {
-        Log.d(TAG, "startFollowMeMission: " + mFollowLocation.toString());
-        mFollowpointText.setText(String.format("%,.4f",mFollowLocation.getLatitude())+","+String.format("%,.4f",mFollowLocation.getLongitude()));
-        if (followmeOperator != null) {
-            if (followmeOperator.getCurrentState().toString().equals(FollowMeMissionState.READY_TO_EXECUTE.toString())) {
-                showToast("starting FM mission");
-                FollowMeMission mission = new FollowMeMission(FollowMeHeading.TOWARD_FOLLOW_POSITION,mFollowLocation.getLatitude(),mFollowLocation.getLongitude(), (float) 30);
-                LocationCoordinate2D newLocation = new LocationCoordinate2D(mFollowLocation.getLatitude(),mFollowLocation.getLongitude());
-                followmeOperator.updateFollowingTarget(newLocation, djiError1 -> {
-                    try {
-                        Thread.sleep(1500);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    if (djiError1 != null)
-                        showToast("error while following: "+djiError1.getDescription()+" ("+ djiError1.getErrorCode()+")");
-                    else
-                        Log.d(TAG,"successfully moving to next position");
-                });
-                followmeOperator.startMission(mission, new CommonCallbacks.CompletionCallback() {
-                    @Override
-                    public void onResult(DJIError djiError) {
-                        showToast("Mission Start: " + (djiError == null ? "Successfully" : djiError.getDescription()));
-                        if (djiError != null)
-                            Log.d(TAG, "Mission Start failed: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
-                        else
-                        {
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    int cnt = 0;
-                                    //Location loc = getLastBestLocation();
-                                    while(cnt < 100) {
-                                        //loc = getLastBestLocation();
-                                        Log.d(TAG,"lat: "+ mFollowLocation.getLatitude() + " lon: " + mFollowLocation.getLongitude());
-                                        mFollowpointText.setText(String.format("%,.4f",mFollowLocation.getLatitude())+","+String.format("%,.4f",mFollowLocation.getLongitude()));
-                                        LocationCoordinate2D newLocation = new LocationCoordinate2D(mFollowLocation.getLatitude(),mFollowLocation.getLongitude());
-                                        followmeOperator.updateFollowingTarget(newLocation, djiError1 -> {
-                                            try {
-                                                Thread.sleep(1500);
-                                            } catch (InterruptedException e) {
-                                                e.printStackTrace();
-                                            }
-                                            if (djiError1 != null)
-                                                showToast("error while following: "+djiError1.getDescription()+" ("+ djiError1.getErrorCode()+")");
-                                            else
-                                                Log.d(TAG,"successfully moving to next position");
-                                        });
-                                        cnt++;
-                                    }
-                                }
-                            }).start();
-                        }
-                    }});
+        flightController.setVirtualStickModeEnabled(false, new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                flightController.setVirtualStickAdvancedModeEnabled(false);
+                if (djiError != null)
+                    Log.d(TAG, djiError.getDescription());
+                else
+                    Log.d(TAG, "Virtual Stick disabled");
             }
-        }
+        });
     }
 
     private void setUpListener() {
@@ -672,20 +636,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         
     }
 
-    private void startFollowMeMissionVS() {
-        if (null == positionObserverTimer) {
-            positionObserverTask = new PositionObserverTask();
-            positionObserverTimer = new Timer();
-            positionObserverTimer.schedule(positionObserverTask, 50, 200);
-        }
-
-        if (null == sendVirtualStickDataTimer) {
-            sendVirtualStickDataTask = new SendVirtualStickDataTask();
-            sendVirtualStickDataTimer = new Timer();
-            sendVirtualStickDataTimer.schedule(sendVirtualStickDataTask, 100, 200);
-        }
-    }
-
     private void takeOff() {
         showToast("ready to start FM mission taking off");
         flightController.startTakeoff(new CommonCallbacks.CompletionCallback() {
@@ -723,7 +673,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //Location pointLoc = getLastBestLocation();
             LocationCoordinate3D droneLoc = flightController.getState().getAircraftLocation();
             // Control Altitude
-            float targetAlt = 30;
+
             float altMargin = 0.5f;
             float deltaAlt = targetAlt - droneLoc.getAltitude();
             if (deltaAlt-altMargin > 0)
@@ -754,13 +704,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 deltaLatM = deltaLat * 111540; // Coords to meters
                 deltaLonM = deltaLon * 111540; // Coords to meters
                 if (deltaLatM + 2 > 0) // move south
-                    pitch = 1f;
+                    pitch = maxHorizontalSpeed;
                 else if (deltaLatM - 2 < 0) // move north
-                    pitch = -1f;
+                    pitch = -1f * maxHorizontalSpeed;
                 if (deltaLonM - 2 > 0) // move west
-                    roll = 1f;
+                    roll = maxHorizontalSpeed;
                 else if (deltaLonM + 2 < 0) // move east
-                    roll = -1f;
+                    roll = -1f * maxHorizontalSpeed;
             }
             runOnUiThread(new Runnable() {
                 @Override

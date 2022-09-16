@@ -36,6 +36,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:screenOrientation="landscape"
         android:supportsRtl="true"
         android:theme="@style/Theme.FGBTracker">
         <!-- DJI SDK -->
@@ -47,6 +48,7 @@
         <activity
             android:name="dji.sdk.sdkmanager.DJIAoaControllerActivity"
             android:theme="@android:style/Theme.Translucent"
+            android:screenOrientation="landscape"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_ACCESSORY_ATTACHED" />
@@ -62,8 +64,7 @@
             android:name="com.example.fgbtracker.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:configChanges="orientation"
-            android:screenOrientation="portrait">
+            android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

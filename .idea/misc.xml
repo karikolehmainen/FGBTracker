@@ -5,7 +5,9 @@
       <map>
         <entry key="app/src/main/res/drawable/common_text_color.xml" value="0.219" />
         <entry key="app/src/main/res/drawable/ic_baseline_connected_24px.xml" value="0.2245" />
+        <entry key="app/src/main/res/drawable/ic_baseline_settings_24.xml" value="0.219" />
         <entry key="app/src/main/res/drawable/ic_outline_disconnected_24px.xml" value="0.2245" />
+        <entry key="app/src/main/res/drawable/ic_settings_black_24dp.xml" value="0.219" />
         <entry key="app/src/main/res/drawable/round_btn.xml" value="0.219" />
         <entry key="app/src/main/res/drawable/round_btn_disable.xml" value="0.219" />
         <entry key="app/src/main/res/layout/activity_main.xml" value="0.30572916666666666" />
