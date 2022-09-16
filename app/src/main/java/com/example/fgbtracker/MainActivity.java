@@ -119,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView mDeltaText;
     private Button mTOButton;
     private Button mSFMButton;
+    private Button mLandButton;
 
     private LocationCoordinate3D mDroneLocation;
     private Location mFollowLocation;
@@ -232,6 +233,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mTOButton.setOnClickListener(this);
         mSFMButton = findViewById(R.id.stopfollowme_btn);
         mSFMButton.setOnClickListener(this);
+        mLandButton = findViewById(R.id.land_btn);
+        mLandButton.setOnClickListener(this);
         Log.d(TAG, "onCreate create Init DJI SDK Manager");
         //Initialize DJI SDK Manager
         mHandler = new Handler(Looper.getMainLooper());
@@ -633,7 +636,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.d(TAG,"onClick Take Off pressed");
             takeOff();
         }
+        if (v.getId() == mLandButton.getId()) {
+            Log.d(TAG,"onClick Land pressed");
+            landDrone();
+        }
         
+    }
+
+    private void landDrone() {
+        showToast("Land Drone");
+        flightController.startLanding(new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                showToast("Landing Start: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+                if (djiError != null)
+                    Log.d(TAG, "Landing Start: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
+            }});
+        try {
+            Thread.sleep(2500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private void takeOff() {
