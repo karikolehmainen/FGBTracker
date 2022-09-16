@@ -58,6 +58,9 @@ import dji.common.flightcontroller.virtualstick.FlightControlData;
 import dji.common.flightcontroller.virtualstick.RollPitchControlMode;
 import dji.common.flightcontroller.virtualstick.VerticalControlMode;
 import dji.common.flightcontroller.virtualstick.YawControlMode;
+import dji.common.gimbal.CapabilityKey;
+import dji.common.gimbal.Rotation;
+import dji.common.gimbal.RotationMode;
 import dji.common.mission.followme.FollowMeMissionEvent;
 import dji.common.util.CommonCallbacks;
 import dji.sdk.flightcontroller.FlightController;
@@ -488,6 +491,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             sendVirtualStickDataTimer = new Timer();
             sendVirtualStickDataTimer.schedule(sendVirtualStickDataTask, 100, 200);
         }
+        Rotation.Builder builder = new Rotation.Builder().mode(RotationMode.ABSOLUTE_ANGLE).time(2);
+        builder.pitch(-90f);
+        mProduct.getGimbal().rotate(builder.build(), new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                showToast("Set Gimbal to -90 deg: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+                if (djiError != null)
+                    Log.d(TAG, "Set Gimbal to -90 deg: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
+            }
+        });
     }
 
     private void stopFollowMeMissionVS() {
