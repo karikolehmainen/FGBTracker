@@ -13,6 +13,10 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentContainerView;
+import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
@@ -21,6 +25,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.fgbtracker.ui.maps.MapsFragment;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -154,12 +159,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public MQTTClient mMQTTclient;
     private float targetAlt;
     private float maxHorizontalSpeed;
+    private MapsActivity mMapsActivity;
 
     private void getLocation() {
         if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                    AppConstants.LOCATION_REQUEST);
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, AppConstants.LOCATION_REQUEST);
 
         } else {
             if (true) {
@@ -200,6 +205,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         prefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
 
         // Debuglogs to file
+        /*
         String filePath = Environment.getExternalStorageDirectory() + "/logcat.txt";
         try {
             Runtime.getRuntime().exec(new String[]{"logcat", "-f", filePath, TAG+":V", "*:S"});
@@ -207,11 +213,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        */
         BottomNavigationView navView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications).build();
+        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_maps, R.id.navigation_notifications).build();
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
@@ -220,6 +226,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkAndRequestPermissions();
         }
+        Fragment mapsFragment = getSupportFragmentManager().findFragmentById(R.id.map);
+        if (mapsFragment != null && mapsFragment.getActivity() instanceof MapsActivity)
+            mMapsActivity = (MapsActivity) mapsFragment.getActivity();
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         //locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
@@ -252,6 +261,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 for (Location location : locationResult.getLocations()) {
                     mFollowLocation = location;
+                    updateMapPoint(mFollowLocation);
                     mFollowpointText.setText(String.format("%,.4f",mFollowLocation.getLatitude())+","+String.format("%,.4f",mFollowLocation.getLongitude()));
                 }
             }
@@ -264,6 +274,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mMQTTclient.setTopic(prefs.getString("pref_mqtt_topicdef", "/54321/drone01/#"));
             mMQTTclient.connect();
         }
+    }
+
+    private void updateMapDrone(LocationCoordinate3D drone) {
+        Log.d(TAG, "updateMapDrone "+drone.getLatitude()+","+drone.getLongitude());
+        FragmentContainerView temp = findViewById(R.id.situmap);
+        if (temp != null) {
+            ((MapsFragment)temp.getFragment()).updateDroneMarker(drone);
+            Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
+        }
+    }
+    private void updateMapPoint(Location robot) {
+        Log.d(TAG, "updateMapPoint1 "+robot.getLatitude()+","+robot.getLongitude());
+        FragmentContainerView temp = findViewById(R.id.situmap);
+        if (temp != null) {
+            ((MapsFragment)temp.getFragment()).updateRobotMarker(robot);
+            Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
+        }
+
     }
     // Method for reinitiating MQTT Client and connection
     private void updateMQTTConnection() {
@@ -640,7 +668,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                            //Log.d(TAG,"FlightControllerState.Callback onUpdate: " + flightController.getCompass().getHeading());
                             mDroneHeading = flightController.getCompass().getHeading();
                             mDroneLocation = state.getAircraftLocation();
-
+                            updateMapDrone(mDroneLocation);
                             if (mHeadingText != null)
                                 mHeadingText.setText(String.format("%,03.1f°",mDroneHeading));
                             if (mLocationText != null)
@@ -737,6 +765,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //Location pointLoc = getLastBestLocation();
             LocationCoordinate3D droneLoc = flightController.getState().getAircraftLocation();
             // Control Altitude
+            mDroneLocation = droneLoc;
+            updateMapDrone(droneLoc);
 
             float altMargin = 0.5f;
             float deltaAlt = targetAlt - droneLoc.getAltitude();

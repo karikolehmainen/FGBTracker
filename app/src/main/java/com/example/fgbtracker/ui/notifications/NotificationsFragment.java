@@ -38,65 +38,79 @@ public class NotificationsFragment extends Fragment {
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Patterns;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceGroup;
 import com.example.fgbtracker.MainActivity;
+import com.example.fgbtracker.ui.home.HomeViewModel;
 
 import fgbtracker.R;
+import fgbtracker.databinding.FragmentHomeBinding;
+import fgbtracker.databinding.FragmentNotificationsBinding;
 
 // Display value of preference in summary field
-
-public class NotificationsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
+//public class NotificationsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class NotificationsFragment extends Fragment {
     protected static final String PAGE_ID = "settings";
     private static final String TAG = NotificationsFragment.class.getSimpleName();
     SharedPreferences sharedPreferences;
 
 
     public static NotificationsFragment newInstance(String pageId) {
+        Log.d(TAG,"newInstance");
         NotificationsFragment settingsFragment = new NotificationsFragment();
         Bundle args = new Bundle();
         args.putString(PAGE_ID, pageId);
-        settingsFragment.setArguments(args);
+        //settingsFragment.setArguments(args);
         return (settingsFragment);
     }
 
+    private FragmentNotificationsBinding binding;
+
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        Log.d(TAG,"onCreateView");
+        NotificationsViewModel settingsViewModel = new ViewModelProvider(this).get(NotificationsViewModel.class);
+        binding = FragmentNotificationsBinding.inflate(inflater, (ViewGroup) container, false);
+        View root = binding.getRoot();
+        Log.d(TAG,"onCreateView -end");
+        return root;
+    }
     /**
      * @param savedInstanceState Any saved state we are bringing into the new fragment instance
      **/
+    /*
     @Override
     public void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         sharedPreferences = getPreferenceManager().getSharedPreferences();
         getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
-
+*/
     /**
      * @param savedInstanceState
      * @param rootKey
-     */
+
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        Log.d(TAG,"onCreatePreferences");
         setPreferencesFromResource(R.xml.preferences, rootKey);
         setListeners();
     }
 
     public void setListeners() {
-        findPreference("pref_external_gcs").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-            @Override
-            public boolean onPreferenceChange(Preference preference, Object newValue) {
-
-                MainActivity.FLAG_PREFS_CHANGED = true;
-                MainActivity.FLAG_TELEMETRY_ADDRESS_CHANGED = true;
-                MainActivity.FLAG_VIDEO_ADDRESS_CHANGED = true;
-
-                return true;
-            }
-        });
+        Log.d(TAG,"setListeners");
 
         findPreference("pref_separate_gcs").setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
             @Override
@@ -202,13 +216,14 @@ public class NotificationsFragment extends PreferenceFragmentCompat implements S
             }
         });
     }
-
+     */
 
     /**
      *
-     */
+
     @Override
     public void onResume() {
+        Log.d(TAG,"onResume");
         super.onResume();
         sharedPreferences.registerOnSharedPreferenceChangeListener(this);
 
@@ -226,13 +241,14 @@ public class NotificationsFragment extends PreferenceFragmentCompat implements S
         }
 
     }
-
+     */
     /**
      *
      */
     @Override
     public void onPause() {
-        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
+        Log.d(TAG,"onPause");
+        //sharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
         super.onPause();
     }
 
@@ -241,23 +257,25 @@ public class NotificationsFragment extends PreferenceFragmentCompat implements S
      */
     @Override
     public void onDestroy() {
+        Log.d(TAG,"onDestroy");
         super.onDestroy();
     }
 
     /**
      * @param sharedPreferences
      * @param key
-     */
+
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-
-        updatePreference(findPreference(key));
+        Log.d(TAG,"onSharedPreferenceChanged");
+        //updatePreference(findPreference(key));
     }
-
+     */
     /**
      * @param preference
      */
     private void updatePreference(Preference preference) {
+        Log.d(TAG,"updatePreference");
         if (preference == null) return;
         if (preference instanceof EditTextPreference) {
             EditTextPreference editTextPref = (EditTextPreference) preference;
@@ -269,8 +287,8 @@ public class NotificationsFragment extends PreferenceFragmentCompat implements S
         } else {
             return;
         }
-        SharedPreferences sharedPrefs = getPreferenceManager().getSharedPreferences();
-        preference.setSummary(sharedPrefs.getString(preference.getKey(), "Default"));
+        //SharedPreferences sharedPrefs = getPreferenceManager().getSharedPreferences();
+        //preference.setSummary(sharedPrefs.getString(preference.getKey(), "Default"));
     }
 
 
