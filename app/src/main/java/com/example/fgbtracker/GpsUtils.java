@@ -5,7 +5,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.IntentSender;
 import android.location.LocationManager;
-import android.support.annotation.NonNull;
+//import android.support.annotation.NonNull;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -21,6 +21,8 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 
 import static android.content.ContentValues.TAG;
+
+import androidx.annotation.NonNull;
 
 public class GpsUtils {
 

@@ -1,0 +1,49 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:key="telemetry_prefs"
+        app:title="@string/telemetry_settings">
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:key="pref_mqtt_enabled"
+            app:title="@string/pref_mqtt" />
+        <EditTextPreference
+            app:defaultValue="tcp://example.com:1883"
+            app:dependency="pref_mqtt_enabled"
+            app:key="pref_mqtt_hosturl"
+            app:title="@string/pref_mqtt_host" />
+        <EditTextPreference
+            app:defaultValue="rosetta"
+            app:dependency="pref_mqtt_enabled"
+            app:key="pref_mqtt_topicdef"
+            app:title="@string/pref_mqtt_topic" />
+        <EditTextPreference
+            app:defaultValue="fgbtracker"
+            app:dependency="pref_mqtt_enabled"
+            app:key="pref_mqtt_clientdef"
+            app:title="@string/pref_mqtt_clientid" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:key="video_prefs"
+        app:title="@string/video_settings">
+
+        <SwitchPreferenceCompat
+            app:key="pref_enable_video"
+            app:title="@string/pref_enable_video"
+            app:defaultValue="true"
+            app:summaryOff="@string/attachment_summary_off"
+            app:summaryOn="@string/attachment_summary_on"/>
+        <EditTextPreference
+            app:defaultValue="127.0.0.1"
+            app:dependency="pref_enable_video"
+            app:key="pref_video_ip"
+            app:title="@string/pref_video_ip" />
+        <EditTextPreference
+            app:defaultValue="5600"
+            app:dependency="pref_enable_video"
+            app:key="pref_video_port"
+            app:title="@string/pref_video_port" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

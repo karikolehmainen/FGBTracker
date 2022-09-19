@@ -76,6 +76,7 @@ import dji.sdk.mission.followme.FollowMeMissionOperatorListener;
 import dji.sdk.products.Aircraft;
 import dji.sdk.sdkmanager.DJISDKInitEvent;
 import dji.sdk.sdkmanager.DJISDKManager;
+import dji.sdk.sdkmanager.LiveStreamManager;
 import dji.thirdparty.afinal.core.AsyncTask;
 import dji.thirdparty.io.reactivex.Observable;
 import dji.thirdparty.io.reactivex.schedulers.Schedulers;
@@ -201,7 +202,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
 
-        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+        PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
         prefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
 
         // Debuglogs to file
@@ -217,7 +218,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         BottomNavigationView navView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_maps, R.id.navigation_notifications).build();
+        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_maps, R.id.navigation_settings).build();
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
@@ -270,10 +271,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         // MQTT Client
         if(prefs.getBoolean("pref_mqtt_enabled", true)) {
-            mMQTTclient = new MQTTClient(this, prefs.getString("pref_mqtt_hosturl", "tcp://flexigrobots.collab-cloud.eu:1883"), "dronetracker");
-            mMQTTclient.setTopic(prefs.getString("pref_mqtt_topicdef", "/54321/drone01/#"));
+            Log.d(TAG, "MQTT Enabled-> connecting");
+            String hostURL = prefs.getString("pref_mqtt_hosturl", "tcp://flexigrobots.collab-cloud.eu:1883");
+            String subsTopic = prefs.getString("pref_mqtt_topicdef", "/54321/drone01/#");
+            Log.d(TAG, "MQTT host: "+hostURL+" topic: "+ subsTopic);
+            mMQTTclient = new MQTTClient(this, hostURL , "dronetracker");
+            mMQTTclient.setTopic(subsTopic);
+            mMQTTclient.subscribeMqttChannel(subsTopic);
             mMQTTclient.connect();
+            Log.d(TAG, "MQTT Enabled - connected");
         }
+
+        // Video feed
+        //LiveStreamManager.LiveStreamVideoSource source = LiveStreamManager.LiveStreamVideoSource.Primary;
+
+        //DJISDKManager.getInstance().getLiveStreamManager().
     }
 
     private void updateMapDrone(LocationCoordinate3D drone) {

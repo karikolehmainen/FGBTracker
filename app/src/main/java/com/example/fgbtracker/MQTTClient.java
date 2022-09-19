@@ -49,6 +49,7 @@ class MQTTClient implements IMqttActionListener {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
                     Log.d(TAG, "connected!!");
+                    subscribeMqttChannel(topic);
                 }
 
                 @Override
