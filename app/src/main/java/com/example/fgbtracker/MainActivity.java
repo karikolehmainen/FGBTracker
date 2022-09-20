@@ -554,8 +554,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void startFollowMeMissionVS() {
 
-        targetAlt = prefs.getFloat("pref_target_alt",40.0f);
-        maxHorizontalSpeed = prefs.getFloat("pref_target_alt",5f);
+        targetAlt = prefs.getFloat("pref_flight_alt",40.0f);
+        maxHorizontalSpeed = prefs.getFloat("pref_flight_speed",5f);
         if (null == positionObserverTimer) {
             positionObserverTask = new PositionObserverTask();
             positionObserverTimer = new Timer();
@@ -791,6 +791,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             e.printStackTrace();
         }
     }
+
     private class SendVirtualStickDataTask extends TimerTask {
         @Override
         public void run() {
@@ -827,10 +828,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             // Control heading
             float heading = flightController.getCompass().getHeading();
+            float yawSpeed = prefs.getFloat("pref_flight_anglespeed",5f);
             if (heading < 0)
-                yaw = 2f;
+                yaw = yawSpeed;
             else if (heading > 0)
-                yaw = -2f;
+                yaw = -1 * yawSpeed;
             else
                 yaw = 0;
 

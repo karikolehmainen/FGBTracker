@@ -46,4 +46,25 @@
             app:title="@string/pref_video_port" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:key="flight_prefs"
+        app:title="@string/flight_settings">
+
+        <EditTextPreference
+            app:defaultValue="30"
+            app:key="pref_flight_alt"
+            app:title="@string/pref_flight_alt" />
+        <EditTextPreference
+            app:defaultValue="5.0"
+            app:key="pref_flight_speed"
+            app:title="@string/pref_flight_speed" />
+        <EditTextPreference
+            app:defaultValue="1.0"
+            app:key="pref_flight_anglespeed"
+            app:title="@string/pref_flight_anglespeed" />
+        <EditTextPreference
+            app:defaultValue="1.0"
+            app:key="pref_flight_smoothing"
+            app:title="@string/pref_flight_smoothing" />
+    </PreferenceCategory>
+
 </PreferenceScreen>

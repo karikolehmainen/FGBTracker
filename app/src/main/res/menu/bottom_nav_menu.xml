@@ -16,7 +16,7 @@
         android:title="@string/title_dashboard" />
     <item
         android:id="@+id/navigation_video"
-        android:icon="@drawable/ic_baseline_map_24"
+        android:icon="@drawable/ic_baseline_local_movies_24"
         android:title="@string/title_video" />
 
     <item
