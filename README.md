@@ -1,10 +1,9 @@
 # FlexiGroBots Surveilance Tracker #
-This Android App is for enabling DJI Mavic Air 2 to track GPS position that is received over MQTT broker. Application is a part of EU 
-research project pilot where drone is used as an aid for situational awareness of robot tracktors working on the field. Main goal of 
-the application is to stay over the robot tracktor on set altitude andprovide video feed for AI analytics that aim to detect objects 
-and their movement around the tracker. Analytics part is separate software topic. Obejct location and movement vectors are then used for 
-detecting possible collision events and provide warning for robot operator as well as for robot control system. Software can be also used to 
-track drone controller in case MQTT broker is not used.
+This Android App is for enabling DJI Mavic Air 2 to track GPS positions that are received over MQTT broker. Application is a part of EU 
+research project pilot where drone is used as an aid for situational awareness of robot tracktors. Main goal of the application is to stay 
+over the robot tracktor on set altitude andprovide video feed for AI analytics that aim to detect objects and their movement around the tracker. 
+Analytics part is separate software topic. Obejct location and movement vectors are then used for detecting possible collision events and provide 
+warning for robot operator as well as for robot control system. Software can be also used to track drone controller in case MQTT broker is not used.
 ## Requirements ##
 Hardware requirements:
 - Android phone (version 9.0 or higher) iwth internet connection
