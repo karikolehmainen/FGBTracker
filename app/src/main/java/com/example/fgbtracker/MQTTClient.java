@@ -128,7 +128,8 @@ class MQTTClient implements IMqttActionListener {
                     public void messageArrived(String topic, MqttMessage message) throws Exception {
                         Log.d("tag","message>>" + new String(message.getPayload()));
                         Log.d("tag","topic>>" + topic);
-                        mainAct.parseMqttMessage(new String(message.getPayload()));
+                        mainAct.parseMqttMessage(topic, new String(message.getPayload()));
+
                     }
 
                     @Override

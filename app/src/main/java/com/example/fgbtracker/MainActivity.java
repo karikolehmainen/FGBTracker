@@ -218,7 +218,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         BottomNavigationView navView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_maps, R.id.navigation_settings).build();
+        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_maps, R.id.navigation_video, R.id.navigation_settings).build();
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
@@ -261,9 +261,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     return;
                 }
                 for (Location location : locationResult.getLocations()) {
-                    mFollowLocation = location;
-                    updateMapPoint(mFollowLocation);
-                    mFollowpointText.setText(String.format("%,.4f",mFollowLocation.getLatitude())+","+String.format("%,.4f",mFollowLocation.getLongitude()));
+                    if(!prefs.getBoolean("pref_mqtt_enabled", false)) {
+                        mFollowLocation = location;
+                        updateMapPoint(mFollowLocation);
+                        mFollowpointText.setText(String.format("%,.4f", mFollowLocation.getLatitude()) + "," + String.format("%,.4f", mFollowLocation.getLongitude()));
+                    }
                 }
             }
         };
@@ -277,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Log.d(TAG, "MQTT host: "+hostURL+" topic: "+ subsTopic);
             mMQTTclient = new MQTTClient(this, hostURL , "dronetracker");
             mMQTTclient.setTopic(subsTopic);
-            mMQTTclient.subscribeMqttChannel(subsTopic);
+            //mMQTTclient.subscribeMqttChannel(subsTopic);
             mMQTTclient.connect();
             Log.d(TAG, "MQTT Enabled - connected");
         }
@@ -318,8 +320,42 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    public void parseMqttMessage(String s) {
-        Log.d(TAG, "receoived MQTT message: "+ s);
+    public void parseMqttMessage(String topic, String msg) {
+        Log.d(TAG, "receoived MQTT message: "+ msg);
+        if(prefs.getBoolean("pref_mqtt_enabled", false)) {
+            String[] topicElems = topic.split("/");
+            for (int k = 0; k < topicElems.length; k++) {
+                Log.d(TAG, "topic element: "+ topicElems[k]);
+                if (topicElems[k].equals("status")) {
+                    String[] elements = msg.split("\\|");
+                    double lat = 0;
+                    double lon = 0;
+                    for (int i = 0; i < elements.length; i++) {
+                        Log.d(TAG, "status element: "+ elements[i]);
+                        if (elements[i].equals("lat"))
+                            lat = Double.parseDouble(elements[i + 1]);
+                        if (elements[i].equals("lon"))
+                            lon = Double.parseDouble(elements[i + 1]);
+                    }
+                    Log.d(TAG, "new lat/lon: "+lat+","+lon);
+                    //if (lat != 0.0 && lon != 0.0) {
+                    double finalLat = lat;
+                    double finalLon = lon;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Location loc = new Location("dummyprovider");
+                            loc.setLatitude(finalLat);
+                            loc.setLongitude(finalLon);
+                            //mFollowLocation.setLatitude(lat);
+                            //mFollowLocation.setLongitude(lon);
+                            updateMapPoint(loc);
+                        }
+                    });
+                    //}
+                }
+            }
+        }
     }
 
     /**

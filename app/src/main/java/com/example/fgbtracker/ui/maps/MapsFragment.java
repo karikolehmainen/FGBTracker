@@ -17,6 +17,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import dji.common.flightcontroller.LocationCoordinate3D;
@@ -45,10 +46,11 @@ public class MapsFragment extends Fragment {
         public void onMapReady(GoogleMap googleMap) {
 
             mMap = googleMap;
+            mMap.setMapType(mMap.MAP_TYPE_SATELLITE);
         }
     };
-    private MarkerOptions mDroneMarker;
-    private MarkerOptions mRobotMarker;
+    private Marker mDroneMarker;
+    private Marker mRobotMarker;
 
     @Nullable
     @Override
@@ -74,12 +76,13 @@ public class MapsFragment extends Fragment {
 
     public void updateRobotMarker(Location robot) {
         LatLng point = new LatLng(robot.getLatitude(),robot.getLongitude());
-        if (mRobotMarker != null)
-            mRobotMarker.position(point);
+        if (mRobotMarker != null) {
+            mRobotMarker.setPosition(point);
+        }
         else {
-            mRobotMarker = new MarkerOptions().position(point).title("robot")
+            MarkerOptions mRobotMarkerOpts = new MarkerOptions().position(point).title("robot")
                     .icon(BitmapDescriptorFactory.fromResource(R.mipmap.robot_icon));
-            mMap.addMarker(mRobotMarker);
+            mRobotMarker = mMap.addMarker(mRobotMarkerOpts);
         }
         mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(18), 1, null);
@@ -88,11 +91,11 @@ public class MapsFragment extends Fragment {
     public void updateDroneMarker(LocationCoordinate3D robot) {
         LatLng point = new LatLng(robot.getLatitude(),robot.getLongitude());
         if (mDroneMarker != null)
-            mDroneMarker.position(point);
+            mDroneMarker.setPosition(point);
         else {
-            mDroneMarker = new MarkerOptions().position(point).title("drone")
+            MarkerOptions mDroneMarkerOpts = new MarkerOptions().position(point).title("drone")
                     .icon(BitmapDescriptorFactory.fromResource(R.mipmap.drone_icon));
-            mMap.addMarker(mDroneMarker);
+            mDroneMarker = mMap.addMarker(mDroneMarkerOpts);
         }
         mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(18), 1, null);

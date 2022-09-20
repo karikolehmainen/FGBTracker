@@ -3,6 +3,7 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="../../../../layout/custom_preview.xml" value="0.38385416666666666" />
         <entry key="app/src/main/res/drawable/common_text_color.xml" value="0.219" />
         <entry key="app/src/main/res/drawable/ic_baseline_connected_24px.xml" value="0.2245" />
         <entry key="app/src/main/res/drawable/ic_baseline_map_24.xml" value="0.3855" />
@@ -16,7 +17,10 @@
         <entry key="app/src/main/res/layout/fragment_home.xml" value="0.21458333333333332" />
         <entry key="app/src/main/res/layout/fragment_maps.xml" value="0.3854166666666667" />
         <entry key="app/src/main/res/layout/fragment_notifications.xml" value="0.21458333333333332" />
+        <entry key="app/src/main/res/layout/fragment_video.xml" value="0.38385416666666666" />
+        <entry key="app/src/main/res/layout/view_health_information.xml" value="0.3572916666666667" />
         <entry key="app/src/main/res/layout/view_mission.xml" value="0.21197916666666666" />
+        <entry key="app/src/main/res/layout/view_video_feeder.xml" value="0.3572916666666667" />
         <entry key="app/src/main/res/layout/view_virtual_stick.xml" value="0.21197916666666666" />
         <entry key="app/src/main/res/menu/bottom_nav_menu.xml" value="0.21458333333333332" />
         <entry key="app/src/main/res/xml/preferences.xml" value="0.21197916666666666" />

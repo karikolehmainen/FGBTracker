@@ -16,6 +16,11 @@
         android:label="@string/title_dashboard"
         tools:layout="@layout/fragment_maps" />
     <fragment
+        android:id="@+id/navigation_video"
+        android:name="com.example.fgbtracker.ui.video.VideoFragment"
+        android:label="@string/title_video"
+        tools:layout="@layout/fragment_video" />
+    <fragment
         android:id="@+id/navigation_settings"
         android:name="com.example.fgbtracker.ui.settings.SettingsFragment"
         android:label="@string/title_notifications"

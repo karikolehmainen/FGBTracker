@@ -14,6 +14,10 @@
         android:id="@+id/navigation_maps"
         android:icon="@drawable/ic_baseline_map_24"
         android:title="@string/title_dashboard" />
+    <item
+        android:id="@+id/navigation_video"
+        android:icon="@drawable/ic_baseline_map_24"
+        android:title="@string/title_video" />
 
     <item
         android:id="@+id/navigation_settings"

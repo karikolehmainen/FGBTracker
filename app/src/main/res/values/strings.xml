@@ -37,4 +37,33 @@
     <string name="attachment_title">Download incoming attachments</string>
     <string name="attachment_summary_on">Stream video to external service</string>
     <string name="attachment_summary_off">Do not stream video</string>
+    <string name="video_feeder_single_camera_product_title">*Inspire1/M100/P3/P4/Mavic... \n Only one live video is available\"</string>
+    <string name="video_feeder_m600_lb2_title">*M600/LB2 products(with two cameras) \n with follow options:</string>
+    <string name="video_feeder_m210_two_camera_title">*M210 Series with two cameras:</string>
+    <string name="video_feeder_m300_camera_title">*M300 RTK</string>
+    <string name="product_with_multiple_gimbals">*Product with multiple gimbals:</string>
+    <string name="video_feeder_enable_single">\tEnable EXT(Single Mode)</string>
+    <string name="video_feeder_disable_single">\tDisable EXT(Dual Mode)</string>
+    <string name="video_feeder_lb_only">LB Only</string>
+    <string name="video_feeder_ext_only">EXT Only</string>
+    <string name="video_feeder_both_lb_ext">LB+EXT</string>
+    <string name="video_feeder_hdmi_only">HDMI Only</string>
+    <string name="video_feeder_av_only">AV Only</string>
+    <string name="video_feeder_both_hdmi_av">HDMI+AV</string>
+    <string name="video_feeder_right_fpv">Right+FPV</string>
+    <string name="video_feeder_left_fpv">Left+FPV</string>
+    <string name="video_feeder_left_right">Left+Right</string>
+    <string name="video_feeder_set_video_source">Set Video Source</string>
+    <string name="video_feeder_set_primary_priority">Set Primary Priority</string>
+    <string name="video_feeder_get_primary_priority">Get Primary Priority</string>
+    <string name="component_listview_video_feeder">Video Feeder View</string>
+    <string name="component_xt2_camera_view">XT2 Camera View</string>
+    <string name="camera_calibration">Camera Calibration</string>
+
+    <string name="popup_picker_finish">Finish</string>
+    <string name="popup_picker_trigger">Trigger</string>
+    <string name="component_listview_health_information">Device Health Information</string>
+    <string name="title_video">Video</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
