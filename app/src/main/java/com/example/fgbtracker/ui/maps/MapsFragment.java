@@ -90,14 +90,15 @@ public class MapsFragment extends Fragment {
 
     public void updateDroneMarker(LocationCoordinate3D robot) {
         LatLng point = new LatLng(robot.getLatitude(),robot.getLongitude());
+        Log.d(TAG, "drone point: "+point.toString());
         if (mDroneMarker != null)
             mDroneMarker.setPosition(point);
         else {
-            MarkerOptions mDroneMarkerOpts = new MarkerOptions().position(point).title("drone")
-                    .icon(BitmapDescriptorFactory.fromResource(R.mipmap.drone_icon));
-            mDroneMarker = mMap.addMarker(mDroneMarkerOpts);
+            if (mMap != null) {
+                MarkerOptions mDroneMarkerOpts = new MarkerOptions().position(point).title("drone")
+                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.drone_icon));
+                mDroneMarker = mMap.addMarker(mDroneMarkerOpts);
+            }
         }
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(18), 1, null);
     }
 }

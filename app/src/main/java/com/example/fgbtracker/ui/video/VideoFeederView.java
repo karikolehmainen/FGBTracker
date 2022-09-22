@@ -53,26 +53,8 @@ public class VideoFeederView extends LinearLayout
     //private PopupNumberPickerDouble popupNumberPickerDouble = null;
     private static int[] INDEX_CHOSEN = { -1, -1, -1 };
     private Handler handler = new Handler(Looper.getMainLooper());
-
     private Context context;
-    private Switch enableSingle;
-    private Switch enableDual;
-    private Button lbOnlyBtn;
-    private Button extOnlyBtn;
-    private Button lbAndExtBtn;
-    private Button hdmiOnlyBtn;
-    private Button avOnlyBtn;
-    private Button hdmiAndAvBtn;
-    private Button leftAndRightBtn;
-    private Button leftAndFpvBtn;
-    private Button rightAndFpvBtn;
-    private Button setVideoSourceBtn;
-    private Button setPrimaryPriorityBtn;
-    private Button getPrimaryPriorityBtn;
-    private TextView primaryVideoFeedTitle;
-    private TextView fpvVideoFeedTitle;
     private VideoFeedView primaryVideoFeed;
-    private VideoFeedView fpvVideoFeed;
     private VideoFeeder.PhysicalSourceListener sourceListener;
     private AirLinkKey extEnabledKey;
     private AirLinkKey lbBandwidthKey;
@@ -85,8 +67,6 @@ public class VideoFeederView extends LinearLayout
     private ActionCallback allocSourceCallback;
     private AirLink airLink;
     private View primaryCoverView;
-    private View fpvCoverView;
-    private TextView cameraListTitle;
     private String cameraListStr;
 
     public VideoFeederView(Context context) {
@@ -114,48 +94,11 @@ public class VideoFeederView extends LinearLayout
     }
 
     private void initUI() {
-        enableSingle = (Switch) findViewById(R.id.single_toggle_button);
-        enableSingle.setOnCheckedChangeListener(this);
-        enableDual = (Switch) findViewById(R.id.dual_toggle_button);
-        enableDual.setOnCheckedChangeListener(this);
 
-        lbOnlyBtn = (Button) findViewById(R.id.video_feeder_lb_only);
-        lbOnlyBtn.setOnClickListener(this);
-        extOnlyBtn = (Button) findViewById(R.id.video_feeder_ext_only);
-        extOnlyBtn.setOnClickListener(this);
-        lbAndExtBtn = (Button) findViewById(R.id.video_feeder_both_lb_ext);
-        lbAndExtBtn.setOnClickListener(this);
-
-        hdmiOnlyBtn = (Button) findViewById(R.id.video_feeder_hdmi_only);
-        hdmiOnlyBtn.setOnClickListener(this);
-        avOnlyBtn = (Button) findViewById(R.id.video_feeder_av_only);
-        avOnlyBtn.setOnClickListener(this);
-        hdmiAndAvBtn = (Button) findViewById(R.id.video_feeder_both_hdmi_av);
-        hdmiAndAvBtn.setOnClickListener(this);
-
-        leftAndFpvBtn = (Button) findViewById(R.id.video_feeder_left_fpv);
-        leftAndFpvBtn.setOnClickListener(this);
-        rightAndFpvBtn = (Button) findViewById(R.id.video_feeder_right_fpv);
-        rightAndFpvBtn.setOnClickListener(this);
-        leftAndRightBtn = (Button) findViewById(R.id.video_feeder_left_right);
-        leftAndRightBtn.setOnClickListener(this);
-
-        setVideoSourceBtn = (Button) findViewById(R.id.video_feeder_set_video_source);
-        setVideoSourceBtn.setOnClickListener(this);
-        setPrimaryPriorityBtn = (Button) findViewById(R.id.video_feeder_set_primary_priority);
-        setPrimaryPriorityBtn.setOnClickListener(this);
-        getPrimaryPriorityBtn = (Button) findViewById(R.id.video_feeder_get_primary_priority);
-        getPrimaryPriorityBtn.setOnClickListener(this);
-
-        cameraListTitle = (TextView) findViewById(R.id.camera_index_title);
-        primaryVideoFeedTitle = (TextView) findViewById(R.id.primary_video_feed_title);
-        fpvVideoFeedTitle = (TextView) findViewById(R.id.fpv_video_feed_title);
+        //primaryVideoFeedTitle = (TextView) findViewById(R.id.primary_video_feed_title);
         primaryVideoFeed = (VideoFeedView) findViewById(R.id.primary_video_feed);
-        fpvVideoFeed = (VideoFeedView) findViewById(R.id.fpv_video_feed);
         primaryCoverView = findViewById(R.id.primary_cover_view);
         primaryVideoFeed.setCoverView(primaryCoverView);
-        fpvCoverView = findViewById(R.id.fpv_cover_view);
-        fpvVideoFeed.setCoverView(fpvCoverView);
         disableAllButtons();
         initEXTSwitch();
     }
@@ -182,9 +125,6 @@ public class VideoFeederView extends LinearLayout
             @Override
             public void onSuccess() {
                 Log.d(TAG, "Set key value successfully");
-                if (fpvVideoFeed != null) {
-                    fpvVideoFeed.changeSourceResetKeyFrame();
-                }
                 if (primaryVideoFeed != null) {
                     primaryVideoFeed.changeSourceResetKeyFrame();
                 }
@@ -234,12 +174,9 @@ public class VideoFeederView extends LinearLayout
             VideoFeederView.this.post(new Runnable() {
                 @Override
                 public void run() {
-                    enableDual.setOnCheckedChangeListener(null);
-                    enableSingle.setOnCheckedChangeListener(null);
-                    enableSingle.setChecked((Boolean) switchValue);
-                    enableDual.setChecked(!(Boolean) switchValue);
-                    enableSingle.setOnCheckedChangeListener(VideoFeederView.this);
-                    enableDual.setOnCheckedChangeListener(VideoFeederView.this);
+                    //enableSingle.setOnCheckedChangeListener(null);
+                    //enableSingle.setChecked((Boolean) switchValue);
+                    //enableSingle.setOnCheckedChangeListener(VideoFeederView.this);
                     enableExtButtons((Boolean) switchValue);
                 }
             });
@@ -247,47 +184,18 @@ public class VideoFeederView extends LinearLayout
     }
 
     private void enableExtButtons(boolean isExtEnabled) {
-        enableSingle.setEnabled(true);
-        enableDual.setEnabled(true);
+       // enableSingle.setEnabled(true);
 
         if (isExtEnabled) {
-            lbOnlyBtn.setEnabled(true);
-            extOnlyBtn.setEnabled(true);
-            lbAndExtBtn.setEnabled(true);
-
-            hdmiOnlyBtn.setEnabled(false);
-            avOnlyBtn.setEnabled(false);
-            hdmiAndAvBtn.setEnabled(false);
+            ;
         } else {
-            lbOnlyBtn.setEnabled(false);
-            extOnlyBtn.setEnabled(false);
-            lbAndExtBtn.setEnabled(false);
-
-            hdmiOnlyBtn.setEnabled(true);
-            avOnlyBtn.setEnabled(true);
-            hdmiAndAvBtn.setEnabled(true);
+            ;
         }
     }
 
     private void disableAllButtons() {
-        enableSingle.setEnabled(false);
-        enableDual.setEnabled(false);
-
-        lbOnlyBtn.setEnabled(false);
-        extOnlyBtn.setEnabled(false);
-        lbAndExtBtn.setEnabled(false);
-
-        hdmiOnlyBtn.setEnabled(false);
-        avOnlyBtn.setEnabled(false);
-        hdmiAndAvBtn.setEnabled(false);
-
-        leftAndFpvBtn.setEnabled(false);
-        rightAndFpvBtn.setEnabled(false);
-        leftAndRightBtn.setEnabled(false);
-
-        setVideoSourceBtn.setEnabled(false);
-        setPrimaryPriorityBtn.setEnabled(false);
-        getPrimaryPriorityBtn.setEnabled(false);
+        //enableSingle.setEnabled(false);
+       ;
     }
 
     private void setUpListeners() {
@@ -296,10 +204,6 @@ public class VideoFeederView extends LinearLayout
             public void onChange(VideoFeeder.VideoFeed videoFeed, PhysicalSource newPhysicalSource) {
                 if (videoFeed == VideoFeeder.getInstance().getPrimaryVideoFeed()) {
                     String newText = "Primary Source: " + newPhysicalSource.toString();
-                    Log.d(TAG, primaryVideoFeedTitle.toString());
-                }
-                if (videoFeed == VideoFeeder.getInstance().getSecondaryVideoFeed()) {
-                    Log.d(TAG, fpvVideoFeedTitle.toString());
                 }
             }
         };
@@ -320,29 +224,19 @@ public class VideoFeederView extends LinearLayout
         if (product != null) {
             VideoFeeder.VideoDataListener primaryVideoDataListener =
                     primaryVideoFeed.registerLiveVideo(VideoFeeder.getInstance().getPrimaryVideoFeed(), true);
-            VideoFeeder.VideoDataListener secondaryVideoDataListener =
-                    fpvVideoFeed.registerLiveVideo(VideoFeeder.getInstance().getSecondaryVideoFeed(), false);
-
             if (isOpen) {
                 String newText =
                         "Primary Source: " + VideoFeeder.getInstance().getPrimaryVideoFeed().getVideoSource().name();
-                Log.d(TAG, primaryVideoFeedTitle.toString());
                 if (Helper.isMultiStreamPlatform()) {
                     String newTextFpv = "Secondary Source: " + VideoFeeder.getInstance()
                             .getSecondaryVideoFeed()
                             .getVideoSource()
                             .name();
-                    Log.d(TAG,fpvVideoFeedTitle.toString());
                 }
                 VideoFeeder.getInstance().addPhysicalSourceListener(sourceListener);
             } else {
                 VideoFeeder.getInstance().removePhysicalSourceListener(sourceListener);
                 VideoFeeder.getInstance().getPrimaryVideoFeed().removeVideoDataListener(primaryVideoDataListener);
-                if (Helper.isMultiStreamPlatform()) {
-                    VideoFeeder.getInstance()
-                            .getSecondaryVideoFeed()
-                            .removeVideoDataListener(secondaryVideoDataListener);
-                }
             }
         }
     }
@@ -354,9 +248,6 @@ public class VideoFeederView extends LinearLayout
                 @Override
                 public void run() {
                     disableAllButtons();
-                    leftAndFpvBtn.setEnabled(true);
-                    rightAndFpvBtn.setEnabled(true);
-                    leftAndRightBtn.setEnabled(true);
                 }
             });
         }
@@ -368,9 +259,6 @@ public class VideoFeederView extends LinearLayout
                 @Override
                 public void run() {
                     disableAllButtons();
-                    setVideoSourceBtn.setEnabled(true);
-                    setPrimaryPriorityBtn.setEnabled(true);
-                    getPrimaryPriorityBtn.setEnabled(true);
                 }
             });
         }
@@ -378,41 +266,12 @@ public class VideoFeederView extends LinearLayout
 
     @Override
     public void onClick(View view) {
-
-        if (view == lbOnlyBtn) {
-            onClickLBOnlyBtn();
-        } else if (view == extOnlyBtn) {
-            onClickExtOnlyBtn();
-        } else if (view == lbAndExtBtn) {
-            onClickLBAndExtBtn();
-        } else if (view == hdmiOnlyBtn) {
-            onClickHDMIOnlyBtn();
-        } else if (view == avOnlyBtn) {
-            onClickAVOnlyBtn();
-        } else if (view == hdmiAndAvBtn) {
-            onClickHDMIAndAVBtn();
-        } else if (view == leftAndFpvBtn) {
-            onClickLeftAndFpvBtn();
-        } else if (view == rightAndFpvBtn) {
-            onClickRightAndFpvBtn();
-        } else if (view == leftAndRightBtn) {
-            onClickLeftAndRightBtn();
-        } else if (view == setVideoSourceBtn) {
-            onClickSetVideoSourceBtn();
-        } else if (view == setPrimaryPriorityBtn) {
-            onClickSetPrimaryPriorityBtn();
-        } else if (view == getPrimaryPriorityBtn) {
-            onClickGetPrimaryPriorityBtn();
-        }
+        ;
     }
 
     @Override
     public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-        if (compoundButton == enableSingle) {
-            onClickSingleSwitch(b);
-        } else if (compoundButton == enableDual) {
-            onClickDualSwitch(b);
-        }
+        ;
     }
 
     private void onClickSingleSwitch(boolean checked) {
@@ -576,7 +435,6 @@ public class VideoFeederView extends LinearLayout
     }
 
     private boolean isM210SeriesTwoCameraConnected() {
-
         Object model = null;
         if (KeyManager.getInstance() != null) {
             model = KeyManager.getInstance().getValue(ProductKey.create(ProductKey.MODEL_NAME));
@@ -603,7 +461,6 @@ public class VideoFeederView extends LinearLayout
                                 + "\n";
                     }
                 }
-                Log.d(TAG,cameraListTitle.toString()+","+cameraListStr.toString());
                 if ((model == Model.MATRICE_210
                         || model == Model.MATRICE_210_RTK
                         || model == Model.MATRICE_210_V2

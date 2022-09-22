@@ -291,21 +291,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void updateMapDrone(LocationCoordinate3D drone) {
-        Log.d(TAG, "updateMapDrone "+drone.getLatitude()+","+drone.getLongitude());
-        FragmentContainerView temp = findViewById(R.id.situmap);
-        if (temp != null) {
-            ((MapsFragment)temp.getFragment()).updateDroneMarker(drone);
-            Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
-        }
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "updateMapDrone " + drone.getLatitude() + "," + drone.getLongitude());
+                FragmentContainerView temp = findViewById(R.id.situmap);
+                if (temp != null) {
+                    ((MapsFragment) temp.getFragment()).updateDroneMarker(drone);
+                    Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
+                }
+            }
+        });
     }
     private void updateMapPoint(Location robot) {
-        Log.d(TAG, "updateMapPoint1 "+robot.getLatitude()+","+robot.getLongitude());
-        FragmentContainerView temp = findViewById(R.id.situmap);
-        if (temp != null) {
-            ((MapsFragment)temp.getFragment()).updateRobotMarker(robot);
-            Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
-        }
-
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "updateMapPoint1 " + robot.getLatitude() + "," + robot.getLongitude());
+                FragmentContainerView temp = findViewById(R.id.situmap);
+                if (temp != null) {
+                    ((MapsFragment) temp.getFragment()).updateRobotMarker(robot);
+                    Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
+                }
+            }
+        });
     }
     // Method for reinitiating MQTT Client and connection
     private void updateMQTTConnection() {
@@ -554,8 +563,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void startFollowMeMissionVS() {
 
-        targetAlt = prefs.getFloat("pref_flight_alt",40.0f);
-        maxHorizontalSpeed = prefs.getFloat("pref_flight_speed",5f);
+        targetAlt =  Float.parseFloat(prefs.getString("pref_flight_alt","40.0"));
+        maxHorizontalSpeed = Float.parseFloat(prefs.getString("pref_flight_speed","5"));
         if (null == positionObserverTimer) {
             positionObserverTask = new PositionObserverTask();
             positionObserverTimer = new Timer();
@@ -828,7 +837,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             // Control heading
             float heading = flightController.getCompass().getHeading();
-            float yawSpeed = prefs.getFloat("pref_flight_anglespeed",5f);
+            float yawSpeed = Float.parseFloat(prefs.getString("pref_flight_anglespeed","1"));
             if (heading < 0)
                 yaw = yawSpeed;
             else if (heading > 0)
