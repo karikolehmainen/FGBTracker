@@ -10,13 +10,11 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentContainerView;
-import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
@@ -25,6 +23,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.fgbtracker.ui.home.HomeFragment;
 import com.example.fgbtracker.ui.maps.MapsFragment;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -46,7 +45,6 @@ import androidx.navigation.ui.NavigationUI;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -54,6 +52,8 @@ import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import dji.common.battery.BatteryState;
+import dji.common.camera.SettingsDefinitions;
 import dji.common.error.DJIError;
 import dji.common.error.DJISDKError;
 import dji.common.flightcontroller.FlightControllerState;
@@ -63,7 +63,6 @@ import dji.common.flightcontroller.virtualstick.FlightControlData;
 import dji.common.flightcontroller.virtualstick.RollPitchControlMode;
 import dji.common.flightcontroller.virtualstick.VerticalControlMode;
 import dji.common.flightcontroller.virtualstick.YawControlMode;
-import dji.common.gimbal.CapabilityKey;
 import dji.common.gimbal.Rotation;
 import dji.common.gimbal.RotationMode;
 import dji.common.mission.followme.FollowMeMissionEvent;
@@ -76,7 +75,6 @@ import dji.sdk.mission.followme.FollowMeMissionOperatorListener;
 import dji.sdk.products.Aircraft;
 import dji.sdk.sdkmanager.DJISDKInitEvent;
 import dji.sdk.sdkmanager.DJISDKManager;
-import dji.sdk.sdkmanager.LiveStreamManager;
 import dji.thirdparty.afinal.core.AsyncTask;
 import dji.thirdparty.io.reactivex.Observable;
 import dji.thirdparty.io.reactivex.schedulers.Schedulers;
@@ -120,12 +118,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private final Observable<Long> timer =Observable.timer(100, TimeUnit.MILLISECONDS).observeOn(Schedulers.computation()).repeat();
 
     private static final int REQUEST_PERMISSION_CODE = 12345;
-    private TextView mHeadingText;
+    private TextView mBatteryText;
     public TextView mLocationText;
     private LocationManager locationManager;
     private Button mFMButton;
-    private TextView mFollowpointText;
     private TextView mDeltaText;
+    private TextView mAltitudeText;
+    private TextView mCameraRecording;
+    private TextView mRecordingText;
     private Button mTOButton;
     private Button mSFMButton;
     private Button mLandButton;
@@ -161,6 +161,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private float targetAlt;
     private float maxHorizontalSpeed;
     private MapsActivity mMapsActivity;
+    private HomeFragment mHomeFragemnt;
+    private BatteryState.Callback mBatteryCallback;
+
+
+    private Handler mMQTTHandler;
+
 
     private void getLocation() {
         if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -173,7 +179,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             } else {
                 mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, location -> {
                     if (location != null) {
-                        mFollowLocation = location;
+                        mFollowLocation.setLatitude(location.getLatitude());
+                        mFollowLocation.setLongitude(location.getLongitude());
+
+                        // for debugging purposes
+                        //sendControllerLocation(mFollowLocation);
                     } else {
                         mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
                     }
@@ -222,7 +232,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
-
         // When the compile and target version is higher than 22, please request the following permission at runtime to ensure the SDK works well.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkAndRequestPermissions();
@@ -236,10 +245,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         /*
         UI Elements
          */
-        mHeadingText = findViewById(R.id.text_heading);
-        mLocationText = findViewById(R.id.text_location);
-        mFollowpointText = findViewById(R.id.text_followpoint);
+        mBatteryText = findViewById(R.id.text_battery);
+        mRecordingText = findViewById(R.id.text_recording_home);
         mDeltaText = findViewById(R.id.text_delta);
+        mAltitudeText = findViewById(R.id.text_altitude);
+        mCameraRecording = findViewById(R.id.text_recording);
+        mRecordingText = findViewById(R.id.text_recording_home);
         mFMButton = findViewById(R.id.followme_btn);
         mFMButton.setOnClickListener(this);
         mTOButton = findViewById(R.id.takeoff_btn);
@@ -264,8 +275,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     if(!prefs.getBoolean("pref_mqtt_enabled", false)) {
                         mFollowLocation = location;
                         updateMapPoint(mFollowLocation);
-                        mFollowpointText.setText(String.format("%,.4f", mFollowLocation.getLatitude()) + "," + String.format("%,.4f", mFollowLocation.getLongitude()));
+                        getLocation();
+                        //mDeltaText.setText(String.format("%,.4f", mFollowLocation.getLatitude()) + "," + String.format("%,.4f", mFollowLocation.getLongitude()));
                     }
+                    // debug
+                    //mFollowLocation = location;
+                    //updateMapPoint(mFollowLocation);
+                    //getLocation();
+                    //sendControllerLocation(mFollowLocation);
                 }
             }
         };
@@ -283,27 +300,55 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mMQTTclient.connect();
             Log.d(TAG, "MQTT Enabled - connected");
         }
+        // MQTT Handler
+        mMQTTHandler = new Handler();
+
 
         // Video feed
         //LiveStreamManager.LiveStreamVideoSource source = LiveStreamManager.LiveStreamVideoSource.Primary;
 
         //DJISDKManager.getInstance().getLiveStreamManager().
+
+        // Create callbacks
+        mBatteryCallback = new BatteryState.Callback() {
+            @Override
+            public void onUpdate(BatteryState batteryState) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mBatteryText.setText(String.format("%d", batteryState.getChargeRemainingInPercent()));
+                    }
+                });
+            }
+        };
     }
 
+    private void setupCamera()
+    {
+        // Set Camera to record video
+        mProduct.getCamera().setFlatMode(SettingsDefinitions.FlatCameraMode.VIDEO_NORMAL, new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                if (djiError != null)
+                    Log.d(TAG, djiError.getDescription());
+            }
+        });
+    }
     private void updateMapDrone(LocationCoordinate3D drone) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, "updateMapDrone " + drone.getLatitude() + "," + drone.getLongitude());
+                Log.d(TAG, "updateMapDrone1 " + drone.getLatitude() + "," + drone.getLongitude());
                 FragmentContainerView temp = findViewById(R.id.situmap);
                 if (temp != null) {
                     ((MapsFragment) temp.getFragment()).updateDroneMarker(drone);
-                    Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
+                    Log.d(TAG, "updateMapDrone2 " + temp.getContext().getClass().getName());
                 }
             }
         });
     }
     private void updateMapPoint(Location robot) {
+        Log.d(TAG, "updateMapPoint0 " + robot.getLatitude() + "," + robot.getLongitude());
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -350,18 +395,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     //if (lat != 0.0 && lon != 0.0) {
                     double finalLat = lat;
                     double finalLon = lon;
-                    runOnUiThread(new Runnable() {
+
+                    mMQTTHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            Location loc = new Location("dummyprovider");
-                            loc.setLatitude(finalLat);
-                            loc.setLongitude(finalLon);
-                            //mFollowLocation.setLatitude(lat);
-                            //mFollowLocation.setLongitude(lon);
-                            updateMapPoint(loc);
+                            if (mFollowLocation == null)
+                                mFollowLocation = new Location("dummyprovider");
+                            mFollowLocation.setLatitude(finalLat);
+                            mFollowLocation.setLongitude(finalLon);
+                            Log.d(TAG,"parseMqttMessage call updateMapPoint");
+                            updateMapPoint(mFollowLocation);
                         }
                     });
-                    //}
+
                 }
             }
         }
@@ -427,6 +473,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             getRealTimeData();
                             notifyStatusChange();
                             setupVirtualController();
+                            setupCamera();
                             //setupFollowMeMission();
                         }
 
@@ -632,6 +679,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 showToast("start recording: " + (djiError == null ? "Successfully" : djiError.getDescription()));
                 if (djiError != null)
                     Log.d(TAG, "start recording: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
+                else {
+                    if (mCameraRecording != null)
+                        mCameraRecording.setText("REC");
+                    if(mRecordingText != null)
+                        mRecordingText.setText("REC");
+                }
             }
         });
     }
@@ -643,6 +696,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 showToast("stop recording: " + (djiError == null ? "Successfully" : djiError.getDescription()));
                 if (djiError != null)
                     Log.d(TAG, "stop recording: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
+                else {
+                    if (mCameraRecording != null)
+                        mCameraRecording.setText("STOP");
+                    if(mRecordingText != null)
+                        mRecordingText.setText("STOP");
+                    else
+                        mRecordingText = findViewById(R.id.text_recording_home);
+                }
             }
         });
     }
@@ -724,18 +785,39 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         public void onUpdate(FlightControllerState state){
                            //Log.d(TAG,"FlightControllerState.Callback onUpdate: " + flightController.getCompass().getHeading());
                             mDroneHeading = flightController.getCompass().getHeading();
+
                             mDroneLocation = state.getAircraftLocation();
+                            //sendDroneLocation(mDroneLocation);
                             updateMapDrone(mDroneLocation);
-                            if (mHeadingText != null)
-                                mHeadingText.setText(String.format("%,03.1f°",mDroneHeading));
                             if (mLocationText != null)
                                 mLocationText.setText(String.format("%,.4f", mDroneLocation.getLatitude())+","+String.format("%,.4f", mDroneLocation.getLongitude())+","+String.format("%,.1f", mDroneLocation.getAltitude()));
                      }
                 });
+                // Set position observer task
+                positionObserverTask = new PositionObserverTask();
+                positionObserverTimer = new Timer();
+                positionObserverTimer.schedule(positionObserverTask, 50, 200);
             }
         }
         //setupFollowMeMission();
     }
+
+    private void sendControllerLocation(Location ctrlLocation) {
+        Log.d(TAG, "sendDroneLocation publish drone location");
+        if (ctrlLocation.getLatitude() != 0 && ctrlLocation.getLongitude() != 0) {
+            String msrg = String.format("lat|%.6f|lon|%.6f|ele|%.1f|h|%.1f|s|0|stat|0",ctrlLocation.getLatitude(),ctrlLocation.getLongitude(),ctrlLocation.getAltitude(),mDroneHeading);
+            mMQTTclient.publish(msrg,mMQTTclient);
+        }
+    }
+
+    private void sendDroneLocation(LocationCoordinate3D mDroneLocation) {
+        Log.d(TAG, "sendDroneLocation publish drone location");
+        if (mDroneLocation.getLatitude() != 0 && mDroneLocation.getLongitude() != 0) {
+            String msrg = String.format("lat|%.6f|lon|%.6f|ele|%.1f|h|%.1f|s|0|stat|0",mDroneLocation.getLatitude(),mDroneLocation.getLongitude(),mDroneLocation.getAltitude(),mDroneHeading);
+            mMQTTclient.publish(msrg,mMQTTclient);
+        }
+    }
+
 
     // gets real time flight data of the aircraft with the given serial number
     private void getRealTimeData() {
@@ -801,6 +883,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    public void setHomeFragmentRef(HomeFragment homeFragment) {
+        mHomeFragemnt = homeFragment;
+    }
+
     private class SendVirtualStickDataTask extends TimerTask {
         @Override
         public void run() {
@@ -855,24 +941,59 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 float deltaLon = (float) (mFollowLocation.getLongitude() - droneLoc.getLongitude());
                 // Convert to meters:
                 deltaLatM = deltaLat * 111540; // Coords to meters
-                deltaLonM = deltaLon * 111540; // Coords to meters
-                if (deltaLatM + 2 > 0) // move south
-                    pitch = maxHorizontalSpeed;
-                else if (deltaLatM - 2 < 0) // move north
-                    pitch = -1f * maxHorizontalSpeed;
-                if (deltaLonM - 2 > 0) // move west
-                    roll = maxHorizontalSpeed;
-                else if (deltaLonM + 2 < 0) // move east
-                    roll = -1f * maxHorizontalSpeed;
+                deltaLonM = deltaLon * 111540; // Coords to meters and  then accont for latitude multiplier
+                deltaLonM = (float) (deltaLonM*Math.cos(Math.toRadians(mFollowLocation.getLatitude())));
+                determineStickPosition(deltaLatM, deltaLonM);
+
             }
+            if (mBatteryText != null) {
+                mProduct.getBattery().setStateCallback(mBatteryCallback);
+            }
+            else
+                mBatteryText = findViewById(R.id.text_battery);
+
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    if(mAltitudeText != null)
+                        mAltitudeText.setText(String.format("%.1f", droneLoc.getAltitude()));
+                    else
+                        mAltitudeText = findViewById(R.id.text_altitude);
+
+                    if(mDeltaText != null)
+                    {
+                        mDeltaText.setText(String.format("%.1f,%.1f",deltaLatM,deltaLonM));
+                    }
+                    else
+                        mDeltaText = findViewById(R.id.text_delta);
+
                     String msg = String.format("d_heading: %.1f d_ele: %.1f d_lat: %.1f d_lon: %.1f", heading, deltaAlt, deltaLatM, deltaLonM);
                     Log.d(TAG, msg);
-                    mDeltaText.setText(msg);
                 }
             });
         }
+    }
+
+    private void determineStickPosition(float deltaLatM, float deltaLonM) {
+
+        if (deltaLatM > 0) // move south
+        {
+            if (deltaLatM > maxHorizontalSpeed)
+                deltaLatM = maxHorizontalSpeed;
+        }
+        else if (deltaLatM < 0) // move north
+            if (deltaLatM < -1f * maxHorizontalSpeed)
+                deltaLatM = -1f * maxHorizontalSpeed;
+        pitch = deltaLatM;
+
+        if (deltaLonM > 0) // move west
+        {
+            if (deltaLonM > maxHorizontalSpeed)
+                deltaLonM = maxHorizontalSpeed;
+        }
+        else if (deltaLonM < 0) // move east
+            if (deltaLonM < maxHorizontalSpeed)
+                deltaLonM = -1f * maxHorizontalSpeed;
+        roll = deltaLonM;
     }
 }

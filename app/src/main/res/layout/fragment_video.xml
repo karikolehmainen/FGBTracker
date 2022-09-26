@@ -3,11 +3,32 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="com.example.fgbtracker.ui.video.VideoFragment">
-
-    <!-- TODO: Update blank fragment layout -->
-    <com.example.fgbtracker.ui.video.VideoFeederView
+    <GridLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:text="@string/hello_blank_fragment" />
+        android:orientation="horizontal"
+        android:screenOrientation="landscape"
+        android:columnCount="3">
+        <TextView
+            android:id="@+id/text_recording"
+            android:layout_width="250px"
+            android:layout_height="wrap_content"
+            android:layout_gravity="left"
+            android:maxWidth="120dp"
+            android:minWidth="120dp"
+            android:maxHeight="80dp"
+            android:minHeight="80dp"
+            android:layout_column="0"
+            android:textSize="20sp" />
+        <!-- TODO: Update blank fragment layout -->
+        <com.example.fgbtracker.ui.video.VideoFeederView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="@string/hello_blank_fragment"
+            android:layout_column="1"
+            android:layout_row="0"
+            android:layout_rowSpan="4"
+            android:layout_gravity="center_horizontal"/>
+    </GridLayout>
 
 </FrameLayout>

@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 
+import com.example.fgbtracker.MainActivity;
 import com.example.fgbtracker.ui.maps.MapsFragment;
 
 import fgbtracker.R;
@@ -21,12 +22,15 @@ import fgbtracker.databinding.FragmentHomeBinding;
 public class HomeFragment extends Fragment {
     public static final String TAG = HomeFragment.class.getName();
     private FragmentHomeBinding binding;
+    private MainActivity activity;
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         Log.d(TAG, "onCreateView");
         HomeViewModel homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
         binding = FragmentHomeBinding.inflate(inflater, (ViewGroup) container, false);
         View root = binding.getRoot();
+        activity = (MainActivity) getActivity();
+        activity.setHomeFragmentRef(this);
         Log.d(TAG, "onCreateView -end");
         return root;
     }
