@@ -22,3 +22,12 @@ UI has four functions: Take off, Land, Start mission and Stop mission. Take Off 
 BE WARNED!! This software is very much work in progress and basically a hack to get around the limitations of Air 2's lack of support for autonomous 
 missions. Using this software may cause unintended behaviour of the drone and even crash in the worst case. Creators or asssociated organisations 
 take ZERO responsibility of any damage or injuries that may be caused directly or indirectly by this software.
+
+## User Interface ##
+User interface has three (map fragment is redundant) fragments. Main fragment visualise drone status on map view and has buttons to start and stop mission
+as well as land or takeoff drone. Main fragment has also few text areas to show status of drone (battery, video recording, delta lat&lon between drone and
+tracking point as well as altitude).
+
+Video fragment shows the video stream from main camera of the drone
+
+Settings fragment allows user to change parameters of the App.
