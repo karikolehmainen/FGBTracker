@@ -27,7 +27,8 @@ take ZERO responsibility of any damage or injuries that may be caused directly o
 User interface has three (map fragment is redundant) fragments. Main fragment visualise drone status on map view and has buttons to start and stop mission
 as well as land or takeoff drone. Main fragment has also few text areas to show status of drone (battery, video recording, delta lat&lon between drone and
 tracking point as well as altitude).
-
+![alt text](https://github.com/karikolehmainen/FGBTracker/blob/main/img/gui1.png?raw=true)
 Video fragment shows the video stream from main camera of the drone
 
 Settings fragment allows user to change parameters of the App.
+![alt text](https://github.com/karikolehmainen/FGBTracker/blob/main/img/gui2.png?raw=true)
