@@ -11,11 +11,6 @@
         android:label="@string/title_home"
         tools:layout="@layout/fragment_home" />
     <fragment
-        android:id="@+id/navigation_maps"
-        android:name="com.example.fgbtracker.ui.maps.MapsFragment"
-        android:label="@string/title_dashboard"
-        tools:layout="@layout/fragment_maps" />
-    <fragment
         android:id="@+id/navigation_video"
         android:name="com.example.fgbtracker.ui.video.VideoFragment"
         android:label="@string/title_video"

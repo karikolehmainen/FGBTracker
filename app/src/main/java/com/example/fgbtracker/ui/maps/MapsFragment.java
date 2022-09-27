@@ -60,13 +60,13 @@ public class MapsFragment extends Fragment {
 
         View root = binding.getRoot();
         //return inflater.inflate(R.layout.fragment_maps, container, false);
-        Log.d(TAG, "onCreateView");
+        Log.d(TAG, "onCreateView -end");
         return root;
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        Log.e(TAG, "onViewCreated");
+        Log.d(TAG, "onViewCreated");
         super.onViewCreated(view, savedInstanceState);
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) {
@@ -100,5 +100,11 @@ public class MapsFragment extends Fragment {
                 mDroneMarker = mMap.addMarker(mDroneMarkerOpts);
             }
         }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        Log.d(TAG, "onDestroyView");
     }
 }

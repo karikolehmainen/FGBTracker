@@ -118,20 +118,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private final Observable<Long> timer =Observable.timer(100, TimeUnit.MILLISECONDS).observeOn(Schedulers.computation()).repeat();
 
     private static final int REQUEST_PERMISSION_CODE = 12345;
-    private TextView mBatteryText;
     public TextView mLocationText;
     private LocationManager locationManager;
-    private Button mFMButton;
+    private LocationCoordinate3D mDroneLocation;
+    private Location mFollowLocation;
+
+    private TextView mBatteryText;
     private TextView mDeltaText;
     private TextView mAltitudeText;
     private TextView mCameraRecording;
     private TextView mRecordingText;
+
+    private Button mFMButton;
     private Button mTOButton;
     private Button mSFMButton;
     private Button mLandButton;
-
-    private LocationCoordinate3D mDroneLocation;
-    private Location mFollowLocation;
 
     private float mDroneHeading;
     private double homeLatitude;
@@ -204,7 +205,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         locationRequest.setInterval(1 * 1000); // 10 seconds
         locationRequest.setFastestInterval(1 * 1000); // 5 seconds
-
         mMissionState = MissionStatus.IDLE;
 
         new GpsUtils(this).turnGPSOn(new GpsUtils.onGpsListener() {
@@ -231,10 +231,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         BottomNavigationView navView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_maps, R.id.navigation_video, R.id.navigation_settings).build();
+        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_video, R.id.navigation_settings).build();
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
+
         // When the compile and target version is higher than 22, please request the following permission at runtime to ensure the SDK works well.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkAndRequestPermissions();
@@ -243,29 +244,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (mapsFragment != null && mapsFragment.getActivity() instanceof MapsActivity)
             mMapsActivity = (MapsActivity) mapsFragment.getActivity();
 
+        Fragment homeFragment = getSupportFragmentManager().findFragmentById(R.id.navigation_home);
+
+        setUpGUIComponents();
+
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         //locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
-        /*
-        UI Elements
-         */
-        mBatteryText = findViewById(R.id.text_battery);
-        mRecordingText = findViewById(R.id.text_recording_home);
-        mDeltaText = findViewById(R.id.text_delta);
-        mAltitudeText = findViewById(R.id.text_altitude);
-        mCameraRecording = findViewById(R.id.text_recording);
-        mRecordingText = findViewById(R.id.text_recording_home);
-        mFMButton = findViewById(R.id.followme_btn);
-        mFMButton.setOnClickListener(this);
-        mTOButton = findViewById(R.id.takeoff_btn);
-        mTOButton.setOnClickListener(this);
-        mSFMButton = findViewById(R.id.stopfollowme_btn);
-        mSFMButton.setOnClickListener(this);
-        mLandButton = findViewById(R.id.land_btn);
-        mLandButton.setOnClickListener(this);
+
         Log.d(TAG, "onCreate create Init DJI SDK Manager");
         //Initialize DJI SDK Manager
         mHandler = new Handler(Looper.getMainLooper());
-        mRecordingText.setBackgroundColor(R.color.light_gray);
+
+        mRecordingText.setBackgroundColor(getResources().getColor(R.color.light_gray));
         mRecordingText.setText("IDLE");
         Log.d(TAG, "onCreate ready");
 
@@ -328,6 +318,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         };
     }
 
+    public void setUpGUIComponents()
+    {
+        /* UI ELEMENTS */
+        mBatteryText = findViewById(R.id.text_battery);
+        mRecordingText = findViewById(R.id.text_recording_home);
+        mDeltaText = findViewById(R.id.text_delta);
+        mAltitudeText = findViewById(R.id.text_altitude);
+        mCameraRecording = findViewById(R.id.text_recording);
+        mRecordingText = findViewById(R.id.text_recording_home);
+
+        mFMButton = this.findViewById(R.id.followme_btn);
+        if (mFMButton != null)
+            mFMButton.setOnClickListener(this);
+        mTOButton = this.findViewById(R.id.takeoff_btn);
+        if (mFMButton != null)
+            mFMButton.setOnClickListener(this);
+        mSFMButton = this.findViewById(R.id.stopfollowme_btn);
+        if (mSFMButton != null)
+            mSFMButton.setOnClickListener(this);
+        mLandButton = this.findViewById(R.id.land_btn);
+        if (mLandButton != null)
+            mLandButton.setOnClickListener(this);
+    }
+
     private void setupCamera()
     {
         // Set Camera to record video
@@ -354,6 +368,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void updateMapPoint(Location robot) {
         Log.d(TAG, "updateMapPoint0 " + robot.getLatitude() + "," + robot.getLongitude());
+        if (mFMButton == null)
+            setUpGUIComponents();
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -697,7 +713,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         mCameraRecording.setText("REC");
                     if(mRecordingText != null) {
                         mRecordingText.setText("REC");
-                        mRecordingText.setBackgroundColor(R.color.red);
+                        mRecordingText.setBackgroundColor(getResources().getColor(R.color.red));
                     }
                 }
             }
@@ -716,7 +732,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         mCameraRecording.setText("STOP");
                     if(mRecordingText != null) {
                         mRecordingText.setText("STOP");
-                        mRecordingText.setBackgroundColor(R.color.light_gray);
+                        mRecordingText.setBackgroundColor(getResources().getColor(R.color.light_gray));
                     }
                     else
                         mRecordingText = findViewById(R.id.text_recording_home);
@@ -907,7 +923,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void setHomeFragmentRef(HomeFragment homeFragment) {
+        Log.d(TAG, "setHomeFragmentRef");
         mHomeFragemnt = homeFragment;
+        setUpGUIComponents();
     }
 
     private class SendVirtualStickDataTask extends TimerTask {
@@ -934,6 +952,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // Control Altitude
             mDroneLocation = droneLoc;
             updateMapDrone(droneLoc);
+            if(mTOButton == null)
+                setUpGUIComponents();
 
             float altMargin = 0.5f;
             float deltaAlt = targetAlt - droneLoc.getAltitude();

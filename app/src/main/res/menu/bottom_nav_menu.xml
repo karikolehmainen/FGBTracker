@@ -5,15 +5,6 @@
         android:id="@+id/navigation_home"
         android:icon="@drawable/ic_baseline_android_24"
         android:title="@string/title_home" />
-<!--
-    <item
-        android:id="@+id/navigation_dashboard"
-        android:icon="@drawable/ic_baseline_log_24"
-        android:title="@string/title_dashboard" /> -->
-    <item
-        android:id="@+id/navigation_maps"
-        android:icon="@drawable/ic_baseline_map_24"
-        android:title="@string/title_dashboard" />
     <item
         android:id="@+id/navigation_video"
         android:icon="@drawable/ic_baseline_local_movies_24"
