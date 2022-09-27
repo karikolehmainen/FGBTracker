@@ -166,6 +166,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
     private Handler mMQTTHandler;
+    private int mMissionState;
 
 
     private void getLocation() {
@@ -203,6 +204,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         locationRequest.setInterval(1 * 1000); // 10 seconds
         locationRequest.setFastestInterval(1 * 1000); // 5 seconds
+
+        mMissionState = MissionStatus.IDLE;
 
         new GpsUtils(this).turnGPSOn(new GpsUtils.onGpsListener() {
             @Override
@@ -262,6 +265,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Log.d(TAG, "onCreate create Init DJI SDK Manager");
         //Initialize DJI SDK Manager
         mHandler = new Handler(Looper.getMainLooper());
+        mRecordingText.setBackgroundColor(R.color.light_gray);
+        mRecordingText.setText("IDLE");
         Log.d(TAG, "onCreate ready");
 
         // Location updates
@@ -609,54 +614,62 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void startFollowMeMissionVS() {
+        if (mProduct != null && mMissionState != MissionStatus.RUNNING)
+        {
+            targetAlt = Float.parseFloat(prefs.getString("pref_flight_alt", "40.0"));
+            maxHorizontalSpeed = Float.parseFloat(prefs.getString("pref_flight_speed", "5"));
+            if (null == positionObserverTimer) {
+                positionObserverTask = new PositionObserverTask();
+                positionObserverTimer = new Timer();
+                positionObserverTimer.schedule(positionObserverTask, 50, 200);
+            }
 
-        targetAlt =  Float.parseFloat(prefs.getString("pref_flight_alt","40.0"));
-        maxHorizontalSpeed = Float.parseFloat(prefs.getString("pref_flight_speed","5"));
-        if (null == positionObserverTimer) {
-            positionObserverTask = new PositionObserverTask();
-            positionObserverTimer = new Timer();
-            positionObserverTimer.schedule(positionObserverTask, 50, 200);
+            if (null == sendVirtualStickDataTimer) {
+                sendVirtualStickDataTask = new SendVirtualStickDataTask();
+                sendVirtualStickDataTimer = new Timer();
+                sendVirtualStickDataTimer.schedule(sendVirtualStickDataTask, 100, 200);
+            }
+            setGimbalPitch(-90f);
+            startRecording();
+            mMissionState = MissionStatus.RUNNING;
         }
-
-        if (null == sendVirtualStickDataTimer) {
-            sendVirtualStickDataTask = new SendVirtualStickDataTask();
-            sendVirtualStickDataTimer = new Timer();
-            sendVirtualStickDataTimer.schedule(sendVirtualStickDataTask, 100, 200);
-        }
-        setGimbalPitch(-90f);
-        startRecording();
+        mRecordingText.setText("RUN");
     }
 
     private void stopFollowMeMissionVS() {
-        if (null != sendVirtualStickDataTimer) {
-            if (sendVirtualStickDataTask != null) {
-                sendVirtualStickDataTask.cancel();
+        if (mMissionState == MissionStatus.RUNNING) {
+            if (null != sendVirtualStickDataTimer) {
+                if (sendVirtualStickDataTask != null) {
+                    sendVirtualStickDataTask.cancel();
+                }
+                sendVirtualStickDataTimer.cancel();
+                sendVirtualStickDataTimer.purge();
+                sendVirtualStickDataTimer = null;
+                sendVirtualStickDataTask = null;
             }
-            sendVirtualStickDataTimer.cancel();
-            sendVirtualStickDataTimer.purge();
-            sendVirtualStickDataTimer = null;
-            sendVirtualStickDataTask = null;
+            if (null != positionObserverTimer) {
+                if (positionObserverTask != null) {
+                    positionObserverTask.cancel();
+                }
+                positionObserverTimer.cancel();
+                positionObserverTimer.purge();
+                positionObserverTimer = null;
+                positionObserverTask = null;
+            }
+            flightController.setVirtualStickModeEnabled(false, new CommonCallbacks.CompletionCallback() {
+                @Override
+                public void onResult(DJIError djiError) {
+                    flightController.setVirtualStickAdvancedModeEnabled(false);
+                    if (djiError != null)
+                        Log.d(TAG, djiError.getDescription());
+                    else
+                        Log.d(TAG, "Virtual Stick disabled");
+                }
+            });
+            stopRecording();
         }
-        if (null != positionObserverTimer) {
-            if (positionObserverTask != null) {
-                positionObserverTask.cancel();
-            }
-            positionObserverTimer.cancel();
-            positionObserverTimer.purge();
-            positionObserverTimer = null;
-            positionObserverTask = null;
-        }
-        flightController.setVirtualStickModeEnabled(false, new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                flightController.setVirtualStickAdvancedModeEnabled(false);
-                if (djiError != null)
-                    Log.d(TAG, djiError.getDescription());
-                else
-                    Log.d(TAG, "Virtual Stick disabled");
-            }
-        });
-        stopRecording();
+        mMissionState = MissionStatus.IDLE;
+        mRecordingText.setText("IDLE");
     }
 
     private void setGimbalPitch(float angle) {
@@ -682,8 +695,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 else {
                     if (mCameraRecording != null)
                         mCameraRecording.setText("REC");
-                    if(mRecordingText != null)
+                    if(mRecordingText != null) {
                         mRecordingText.setText("REC");
+                        mRecordingText.setBackgroundColor(R.color.red);
+                    }
                 }
             }
         });
@@ -699,8 +714,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 else {
                     if (mCameraRecording != null)
                         mCameraRecording.setText("STOP");
-                    if(mRecordingText != null)
+                    if(mRecordingText != null) {
                         mRecordingText.setText("STOP");
+                        mRecordingText.setBackgroundColor(R.color.light_gray);
+                    }
                     else
                         mRecordingText = findViewById(R.id.text_recording_home);
                 }
@@ -852,34 +869,40 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void landDrone() {
-        showToast("Land Drone");
-        flightController.startLanding(new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                showToast("Landing Start: " + (djiError == null ? "Successfully" : djiError.getDescription()));
-                if (djiError != null)
-                    Log.d(TAG, "Landing Start: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
-            }});
-        try {
-            Thread.sleep(2500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if (flightController != null) {
+            showToast("Land Drone");
+            flightController.startLanding(new CommonCallbacks.CompletionCallback() {
+                @Override
+                public void onResult(DJIError djiError) {
+                    showToast("Landing Start: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+                    if (djiError != null)
+                        Log.d(TAG, "Landing Start: " + djiError.getDescription() + " (" + djiError.getErrorCode() + ")");
+                }
+            });
+            try {
+                Thread.sleep(2500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
     private void takeOff() {
-        showToast("ready to start FM mission taking off");
-        flightController.startTakeoff(new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                showToast("Take OFF Start: " + (djiError == null ? "Successfully" : djiError.getDescription()));
-                if (djiError != null)
-                    Log.d(TAG, "Take OFF Start: "+djiError.getDescription()+" ("+djiError.getErrorCode()+")");
-            }});
-        try {
-            Thread.sleep(2500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if (flightController != null) {
+            showToast("ready to start FM mission taking off");
+            flightController.startTakeoff(new CommonCallbacks.CompletionCallback() {
+                @Override
+                public void onResult(DJIError djiError) {
+                    showToast("Take OFF Start: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+                    if (djiError != null)
+                        Log.d(TAG, "Take OFF Start: " + djiError.getDescription() + " (" + djiError.getErrorCode() + ")");
+                }
+            });
+            try {
+                Thread.sleep(2500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 

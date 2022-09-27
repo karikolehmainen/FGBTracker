@@ -30,6 +30,9 @@ public class HomeFragment extends Fragment {
         binding = FragmentHomeBinding.inflate(inflater, (ViewGroup) container, false);
         View root = binding.getRoot();
         activity = (MainActivity) getActivity();
+
+        // Moved UI Elements from Main Activity here...
+
         activity.setHomeFragmentRef(this);
         Log.d(TAG, "onCreateView -end");
         return root;
