@@ -168,6 +168,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private Handler mMQTTHandler;
     private int mMissionState;
+    private int mStatusColor;
 
 
     private void getLocation() {
@@ -206,7 +207,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         locationRequest.setInterval(1 * 1000); // 10 seconds
         locationRequest.setFastestInterval(1 * 1000); // 5 seconds
         mMissionState = MissionStatus.IDLE;
-
+        mStatusColor = getResources().getColor(R.color.light_gray);
         new GpsUtils(this).turnGPSOn(new GpsUtils.onGpsListener() {
             @Override
             public void gpsStatus(boolean isGPSEnable) {
@@ -311,6 +312,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        if (mBatteryText == null)
+                            setUpGUIComponents();
                         mBatteryText.setText(String.format("%d", batteryState.getChargeRemainingInPercent()));
                     }
                 });
@@ -327,6 +330,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mAltitudeText = findViewById(R.id.text_altitude);
         mCameraRecording = findViewById(R.id.text_recording);
         mRecordingText = findViewById(R.id.text_recording_home);
+        if (mRecordingText != null) {
+            if (mMissionState == MissionStatus.RUNNING)
+                mRecordingText.setText("RUN");
+            else
+                mRecordingText.setText("IDLE");
+            mRecordingText.setBackgroundColor(mStatusColor);
+        }
 
         mFMButton = this.findViewById(R.id.followme_btn);
         if (mFMButton != null)
@@ -648,8 +658,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             setGimbalPitch(-90f);
             startRecording();
             mMissionState = MissionStatus.RUNNING;
+            mRecordingText.setText("RUN");
         }
-        mRecordingText.setText("RUN");
+
     }
 
     private void stopFollowMeMissionVS() {
@@ -712,8 +723,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     if (mCameraRecording != null)
                         mCameraRecording.setText("REC");
                     if(mRecordingText != null) {
-                        mRecordingText.setText("REC");
-                        mRecordingText.setBackgroundColor(getResources().getColor(R.color.red));
+                        mStatusColor = getResources().getColor(R.color.red);
+                        mRecordingText.setBackgroundColor(mStatusColor);
                     }
                 }
             }
@@ -731,8 +742,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     if (mCameraRecording != null)
                         mCameraRecording.setText("STOP");
                     if(mRecordingText != null) {
-                        mRecordingText.setText("STOP");
-                        mRecordingText.setBackgroundColor(getResources().getColor(R.color.light_gray));
+                        mStatusColor = getResources().getColor(R.color.light_gray);
+                        mRecordingText.setBackgroundColor(mStatusColor);
                     }
                     else
                         mRecordingText = findViewById(R.id.text_recording_home);
