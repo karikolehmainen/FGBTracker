@@ -1,4 +1,4 @@
-package com.example.fgbtracker;
+package com.example.fgbtracker.model;
 
 public class MissionStatus {
     public static final int IDLE = 0;
