@@ -36,8 +36,11 @@ public class VirtualPilot {
     private float throttle;
     private float roll;
     private float pitch;
-    private float rawroll;
-    private float rawpitch;
+    //private double rawroll;
+    //private double rawpitch;
+    private float deltaLatM;
+    private float deltaLonM;
+
     private double droneSpeed;
     private long lastUpdateTS;
     private double speedThreshold = 0.5;
@@ -49,6 +52,8 @@ public class VirtualPilot {
     private float deltaD;
     private float deltaAlt;
     private float targetDist; // meters
+    private SendVirtualStickDataTask sendVirtualStickDataTask;
+    private Timer sendVirtualStickDataTimer;
 
     public VirtualPilot(SharedPreferences prefers, FlightController flightCTRL)
     {
@@ -58,6 +63,8 @@ public class VirtualPilot {
         flightController = flightCTRL;
         targetDist = 999;
         maxSpeed = 5.0;
+        double pitch = 0.0;
+        double roll = 0.0;
 
         String filePath = Environment.getExternalStorageDirectory() + "/fgbtracker_virtualpilot.txt";
         try {
@@ -105,11 +112,25 @@ public class VirtualPilot {
         positionObserverTimer = new Timer();
         positionObserverTimer.schedule(positionObserverTask, 50, interval);
         pilotActive = true;
+        if (null == sendVirtualStickDataTimer) {
+            sendVirtualStickDataTask = new SendVirtualStickDataTask();
+            sendVirtualStickDataTimer = new Timer();
+            sendVirtualStickDataTimer.schedule(sendVirtualStickDataTask, 100, 200);
+        }
     }
 
     public void stopPilot()
     {
         Log.d(TAG, "stopPilot");
+        if (null != sendVirtualStickDataTimer) {
+            if (sendVirtualStickDataTask != null) {
+                sendVirtualStickDataTask.cancel();
+            }
+            sendVirtualStickDataTimer.cancel();
+            sendVirtualStickDataTimer.purge();
+            sendVirtualStickDataTimer = null;
+            sendVirtualStickDataTask = null;
+        }
         if (positionObserverTimer != null)
             positionObserverTimer.cancel();
         if (positionObserverTask != null)
@@ -134,10 +155,12 @@ public class VirtualPilot {
     {
         return deltaAlt;
     }
-
+    /*
     private class PositionObserverTask extends TimerTask {
         @Override
         public void run() {
+            double pitch = 0.0;
+            double roll  = 0.0;
             LocationCoordinate3D droneLoc = flightController.getState().getAircraftLocation();
             lastPosition = currentPosition;
             setCurrentPosition(droneLoc.getLatitude(),droneLoc.getLongitude(),droneLoc.getAltitude());
@@ -167,19 +190,34 @@ public class VirtualPilot {
                     throttle = (float) -0.5;
                 else
                     throttle = 0;
+                if (Math.abs(roll)>targetSpeed)
+                    if (roll < 0)
+                        roll = (0-targetSpeed);
+                    else
+                        roll = targetSpeed;
+                pitch = Math.sqrt(targetSpeed*targetSpeed-roll*roll);
+                if (Math.abs(pitch)>targetSpeed)
+                    if (pitch < 0)
+                        pitch = (0-targetSpeed);
+                    else
+                        pitch = targetSpeed;
+                roll = Math.sqrt(targetSpeed*targetSpeed-roll*roll);
+                //pitch = (float) ((float) pitch+(deltaV / targetSpeed));
+                //roll = (float) ((float) pitch+(deltaV / targetSpeed));
+                pitch = (pitch*(targetSpeed/lastSpeed));
+                roll = (roll*(targetSpeed/lastSpeed));
+                //double tmp_speed = Math.sqrt(roll*roll+pitch*pitch);
 
-                pitch = (float) ((float) pitch+(deltaV / targetSpeed));
-                roll = (float) ((float) pitch+(deltaV / targetSpeed));
                 if (Math.abs(pitch)>maxSpeed)
                     if (pitch < 0)
-                        pitch = (float) (0-maxSpeed);
+                        pitch = (0-maxSpeed);
                     else
-                        pitch = (float) maxSpeed;
+                        pitch = maxSpeed;
                 if (Math.abs(roll)>maxSpeed)
                     if (roll < 0)
-                        roll = (float) (0-maxSpeed);
+                        roll = (0-maxSpeed);
                     else
-                        roll = (float) maxSpeed;
+                        roll = maxSpeed;
 
                 // Control heading
                 float heading = flightController.getCompass().getHeading();
@@ -194,9 +232,9 @@ public class VirtualPilot {
                 // Control position
                 // check first direction Location bearintTo returns direction easto from north in degrees
                 double diff = bearing_target - bearing_last;
-                rawroll = roll;
-                rawpitch = pitch;
-                if (diff < 0)
+                double rawroll = roll;
+                double rawpitch = pitch;
+                /*if (diff < 0)
                     diff = diff + 360;
                 if (diff > 180)
                     diff = 360 - diff;
@@ -214,11 +252,12 @@ public class VirtualPilot {
                     float[] rotatedVector = rotateVector(vector, (float) diff);
                     roll = vector[0];
                     pitch = vector[1];
-                }
+                }*/
+    /*
 
                 if (flightController != null) {
                     Log.d(TAG, "PositionObserverTask roll:" + roll + "rawroll:" + rawroll + " pitch:" + pitch + "rawpitch:" + rawpitch + " heading:"+heading+" yaw:" + yaw + " throttle:" + throttle);
-                    flightController.sendVirtualStickFlightControlData(new FlightControlData(roll, pitch, yaw, throttle), new CommonCallbacks.CompletionCallback() {
+                    flightController.sendVirtualStickFlightControlData(new FlightControlData((float)roll, (float)pitch, yaw, throttle), new CommonCallbacks.CompletionCallback() {
                         @Override
                         public void onResult(DJIError djiError) {
                             if (djiError != null) {
@@ -234,6 +273,97 @@ public class VirtualPilot {
             }
         } // run
     }
+    */
+    private class SendVirtualStickDataTask extends TimerTask {
+        @Override
+        public void run() {
+            if (flightController != null) {
+                flightController.sendVirtualStickFlightControlData(new FlightControlData(roll, pitch, yaw, throttle), new CommonCallbacks.CompletionCallback() {
+                    @Override
+                    public void onResult(DJIError djiError) {
+                        if (djiError != null) {
+                            Log.d(TAG, "SendVirtualStickDataTask:"+ djiError.getDescription());
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    private class PositionObserverTask extends TimerTask {
+        private LocationCoordinate3D mDroneLocation;
+
+        @Override
+        public void run() {
+            //Location pointLoc = getLastBestLocation();
+            LocationCoordinate3D droneLoc = flightController.getState().getAircraftLocation();
+            // Control Altitude
+            mDroneLocation = droneLoc;
+            setCurrentPosition(droneLoc.getLatitude(),droneLoc.getLongitude(),droneLoc.getAltitude());
+            //updateMapDrone(droneLoc);
+            //if(mTOButton == null)
+            //    setUpGUIComponents();
+
+            float altMargin = 0.5f;
+            float deltaAlt = (float) (targetAlt - droneLoc.getAltitude());
+            if (deltaAlt-altMargin > 0)
+                throttle = 2;
+            else if (deltaAlt+altMargin < 0)
+                throttle = (float) -0.5;
+            else
+                throttle = 0;
+
+            // Control heading
+            float heading = flightController.getCompass().getHeading();
+            float yawSpeed = Float.parseFloat(prefs.getString("pref_flight_anglespeed","1"));
+            if (heading < 0)
+                yaw = yawSpeed;
+            else if (heading > 0)
+                yaw = -1 * yawSpeed;
+            else
+                yaw = 0;
+
+            // Control position
+            pitch = 0;
+            roll = 0;
+            deltaLatM = 0f;
+            deltaLonM = 0f;
+            if(currentTarget != null) {
+                float deltaLat = (float) (currentTarget.getLatitude() - droneLoc.getLatitude());
+                float deltaLon = (float) (currentTarget.getLongitude() - droneLoc.getLongitude());
+                // Convert to meters:
+                deltaLatM = deltaLat * 111540; // Coords to meters
+                deltaLonM = deltaLon * 111540; // Coords to meters and  then accont for latitude multiplier
+                deltaLonM = (float) (deltaLonM*Math.cos(Math.toRadians(currentTarget.getLatitude())));
+                determineStickPosition(deltaLatM, deltaLonM);
+
+            }
+        }
+    }
+
+    private void determineStickPosition(float deltaLatM, float deltaLonM) {
+
+        if (deltaLatM > 0) // move south
+        {
+            if (deltaLatM > maxSpeed)
+                deltaLatM = (float) maxSpeed;
+        }
+        else if (deltaLatM < 0) // move north
+            if (deltaLatM < -1f * maxSpeed)
+                deltaLatM = (float) (-1f * maxSpeed);
+        pitch = deltaLatM;
+
+        if (deltaLonM > 0) // move west
+        {
+            if (deltaLonM > maxSpeed)
+                deltaLonM = (float) maxSpeed;
+        }
+        else if (deltaLonM < 0) // move east
+            if (deltaLonM < maxSpeed)
+                deltaLonM = (float) (-1f * maxSpeed);
+        roll = deltaLonM;
+    }
+
 
     public void setTargetAlt(double alt)
     {

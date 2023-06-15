@@ -190,7 +190,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
             }
             else {
-                mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, location -> {
+                  mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, location -> {
                     if (location != null) {
                         //mFollowLocation.setLatitude(location.getLatitude());
                         //mFollowLocation.setLongitude(location.getLongitude());
@@ -463,13 +463,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Log.d(TAG, "targetID: "+mission.getTargetID()+" topic: "+ topic.toLowerCase());
                 String[] topicElems = topic.split("/");
                 // if robot is reporting its status
-                if (topicElems[topicElems.length-1].contains("attr")) {
+                if (topicElems[topicElems.length-1].contains("attr") || topicElems[topicElems.length-1].contains("status")) {
                     String[] elements = msg.split("\\|");
                     double lat = 0;
                     double lon = 0;
                     double speed = 0;
                     for (int i = 0; i < elements.length; i++) {
-                        Log.d(TAG, "status element: " + elements[i]);
+                        //Log.d(TAG, "status element: " + elements[i]);
                         if (elements[i].equals("lat"))
                             lat = Double.parseDouble(elements[i + 1]);
                         if (elements[i].equals("lon"))
