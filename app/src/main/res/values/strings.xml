@@ -69,5 +69,11 @@
     <string name="pref_flight_speed">Horizontal Speed</string>
     <string name="pref_flight_anglespeed">Yaw Speed</string>
     <string name="pref_flight_smoothing">Smoothing factor</string>
+    <string name="photo_settings">Photo</string>
+    <string name="pref_enable_photo">Enable photo feed</string>
+    <string name="photo_summary_off">Send photo stream to host</string>
+    <string name="photo_summary_on">Send photo stream to host</string>
+    <string name="pref_photo_ip">Photo service address</string>
+    <string name="pref_photo_port">Photo service port</string>
 
 </resources>

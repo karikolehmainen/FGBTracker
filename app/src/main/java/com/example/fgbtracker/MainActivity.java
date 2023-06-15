@@ -10,6 +10,7 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -23,6 +24,11 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.fgbtracker.control.MQTTClient;
+import com.example.fgbtracker.model.MissionStatus;
+import com.example.fgbtracker.model.PhotoSender;
+import com.example.fgbtracker.model.SurveilanceMission;
+import com.example.fgbtracker.model.VirtualPilot;
 import com.example.fgbtracker.ui.home.HomeFragment;
 import com.example.fgbtracker.ui.maps.MapsFragment;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -45,8 +51,10 @@ import androidx.navigation.ui.NavigationUI;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
@@ -67,6 +75,7 @@ import dji.common.gimbal.Rotation;
 import dji.common.gimbal.RotationMode;
 import dji.common.mission.followme.FollowMeMissionEvent;
 import dji.common.util.CommonCallbacks;
+import dji.sdk.camera.Camera;
 import dji.sdk.flightcontroller.FlightController;
 import dji.sdk.base.BaseComponent;
 import dji.sdk.base.BaseProduct;
@@ -121,13 +130,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public TextView mLocationText;
     private LocationManager locationManager;
     private LocationCoordinate3D mDroneLocation;
-    private Location mFollowLocation;
+    //private Location mFollowLocation;
 
     private TextView mBatteryText;
     private TextView mDeltaText;
     private TextView mAltitudeText;
     private TextView mCameraRecording;
     private TextView mRecordingText;
+    private int locationCounter;
 
     private Button mFMButton;
     private Button mTOButton;
@@ -139,22 +149,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private FlightMode flightState;
     private double homeLongitude;
     private FollowMeMissionOperatorListener listener;
-    private float roll;
-    private float pitch;
-    private float yaw;
-    private float throttle;
+
     private boolean isGPS = false;
     private Timer sendVirtualStickDataTimer;
-    private SendVirtualStickDataTask sendVirtualStickDataTask;
-    private Timer positionObserverTimer;
-    private PositionObserverTask positionObserverTask;
+    private Timer dataObserverTimer;
+    private DataUpdateTask dataUpdateTask;
     private LocationCallback locationCallback;
     private FusedLocationProviderClient mFusedLocationClient;
     private LocationRequest locationRequest;
     private SharedPreferences prefs;
-
-    private float deltaLatM;
-    private float deltaLonM;
 
     public static boolean FLAG_MQTT_HOST_CHANGED = false;
     public static boolean FLAG_MQTT_TOPIC_CHANGED = false;
@@ -169,6 +172,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Handler mMQTTHandler;
     private int mMissionState;
     private int mStatusColor;
+    private LiveSteamVideo mVideoStream;
+    private VirtualPilot virtualPilot;
+    private SurveilanceMission mission;
+    private PhotoSender mPhotoSender;
+    private int photoCounter;
+    private Camera mCamera;
 
 
     private void getLocation() {
@@ -179,14 +188,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else {
             if (true) {
                 mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
-            } else {
-                mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, location -> {
+            }
+            else {
+                  mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, location -> {
                     if (location != null) {
-                        mFollowLocation.setLatitude(location.getLatitude());
-                        mFollowLocation.setLongitude(location.getLongitude());
+                        //mFollowLocation.setLatitude(location.getLatitude());
+                        //mFollowLocation.setLongitude(location.getLongitude());
 
                         // for debugging purposes
-                        //sendControllerLocation(mFollowLocation);
+                        /* TODO: check this */
+                        //endControllerLocation(mFollowLocation);
+                        sendControllerLocation(location.getLatitude(), location.getLongitude());
                     } else {
                         mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
                     }
@@ -198,6 +210,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        locationCounter = 0;
+        photoCounter = 0;
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -220,15 +234,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         prefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
 
         // Debuglogs to file
-        /*
-        String filePath = Environment.getExternalStorageDirectory() + "/logcat.txt";
+
+        String filePath = Environment.getExternalStorageDirectory() + "/fgbtracker.txt";
         try {
             Runtime.getRuntime().exec(new String[]{"logcat", "-f", filePath, TAG+":V", "*:S"});
             Log.d(TAG,"direct logs to file: "+filePath);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        */
+
         BottomNavigationView navView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
@@ -269,16 +283,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 for (Location location : locationResult.getLocations()) {
                     if(!prefs.getBoolean("pref_mqtt_enabled", false)) {
-                        mFollowLocation = location;
-                        updateMapPoint(mFollowLocation);
+                        //mFollowLocation = location;
+                        //updateMapPoint(mFollowLocation);
+                        updateMapPoint(location.getLatitude(), location.getLongitude());
                         getLocation();
                         //mDeltaText.setText(String.format("%,.4f", mFollowLocation.getLatitude()) + "," + String.format("%,.4f", mFollowLocation.getLongitude()));
                     }
-                    // debug
-                    //mFollowLocation = location;
-                    //updateMapPoint(mFollowLocation);
-                    //getLocation();
-                    //sendControllerLocation(mFollowLocation);
                 }
             }
         };
@@ -301,10 +311,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
         // Video feed
-        //LiveStreamManager.LiveStreamVideoSource source = LiveStreamManager.LiveStreamVideoSource.Primary;
-
-        //DJISDKManager.getInstance().getLiveStreamManager().
-
+        if (prefs.getBoolean("pref_enable_video", false)) {
+            mVideoStream = new LiveSteamVideo(prefs.getString("pref_video_ip", "127.0.0.1"), prefs.getString("pref_video_port", "5600"), findViewById(R.id.primary_video_feed));
+        }
         // Create callbacks
         mBatteryCallback = new BatteryState.Callback() {
             @Override
@@ -319,7 +328,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 });
             }
         };
-    }
+    } // onCreate
 
     public void setUpGUIComponents()
     {
@@ -342,8 +351,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (mFMButton != null)
             mFMButton.setOnClickListener(this);
         mTOButton = this.findViewById(R.id.takeoff_btn);
-        if (mFMButton != null)
-            mFMButton.setOnClickListener(this);
+        if (mTOButton != null)
+            mTOButton   .setOnClickListener(this);
         mSFMButton = this.findViewById(R.id.stopfollowme_btn);
         if (mSFMButton != null)
             mSFMButton.setOnClickListener(this);
@@ -354,40 +363,58 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void setupCamera()
     {
+        Log.d(TAG, "setupCamera");
+        mCamera = mProduct.getCamera();
         // Set Camera to record video
-        mProduct.getCamera().setFlatMode(SettingsDefinitions.FlatCameraMode.VIDEO_NORMAL, new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                if (djiError != null)
-                    Log.d(TAG, djiError.getDescription());
-            }
-        });
+        if (prefs.getBoolean("pref_enable_video", false)) {
+            Log.d(TAG, "setupCamera for video");
+            mCamera.setFlatMode(SettingsDefinitions.FlatCameraMode.VIDEO_NORMAL, new CommonCallbacks.CompletionCallback() {
+                @Override
+                public void onResult(DJIError djiError) {
+                    if (djiError != null)
+                        Log.d(TAG, "setupCamera(video): "+djiError.getDescription());
+                }
+            });
+           //mCamera.
+        }
+        else {
+            Log.d(TAG, "setupCamera for photo");
+            mCamera.setMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO, new CommonCallbacks.CompletionCallback() {
+            //mProduct.getCamera().setFlatMode(SettingsDefinitions.FlatCameraMode.PHOTO_SINGLE, new CommonCallbacks.CompletionCallback() {
+                @Override
+                public void onResult(DJIError djiError) {
+                    if (djiError != null)
+                        Log.d(TAG, "setupCamera(photo): "+djiError.getDescription());
+                }
+            });
+        }
     }
-    private void updateMapDrone(LocationCoordinate3D drone) {
+    //private void updateMapDrone(LocationCoordinate3D drone) {
+    private void updateMapDrone(double lat, double lon) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, "updateMapDrone1 " + drone.getLatitude() + "," + drone.getLongitude());
+                //Log.d(TAG, "updateMapDrone1 " +lat + "," + lon);
                 FragmentContainerView temp = findViewById(R.id.situmap);
                 if (temp != null) {
-                    ((MapsFragment) temp.getFragment()).updateDroneMarker(drone);
-                    Log.d(TAG, "updateMapDrone2 " + temp.getContext().getClass().getName());
+                    ((MapsFragment) temp.getFragment()).updateDroneMarker(lat, lon);
+                    //Log.d(TAG, "updateMapDrone2 " + temp.getContext().getClass().getName());
                 }
             }
         });
     }
-    private void updateMapPoint(Location robot) {
-        Log.d(TAG, "updateMapPoint0 " + robot.getLatitude() + "," + robot.getLongitude());
+    private void updateMapPoint(double lat, double lon) {
+        Log.d(TAG, "updateMapPoint0 " + lat + "," + lon);
         if (mFMButton == null)
             setUpGUIComponents();
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Log.d(TAG, "updateMapPoint1 " + robot.getLatitude() + "," + robot.getLongitude());
+                //Log.d(TAG, "updateMapPoint1 " + lat + "," + lon);
                 FragmentContainerView temp = findViewById(R.id.situmap);
                 if (temp != null) {
-                    ((MapsFragment) temp.getFragment()).updateRobotMarker(robot);
-                    Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
+                    ((MapsFragment) temp.getFragment()).updateRobotMarker(lat, lon);
+                    //Log.d(TAG, "updateMapPoint2 " + temp.getContext().getClass().getName());
                 }
             }
         });
@@ -406,39 +433,69 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void parseMqttMessage(String topic, String msg) {
-        Log.d(TAG, "receoived MQTT message: "+ msg);
+        //Log.d(TAG, "received MQTT message: "+ msg);
         if(prefs.getBoolean("pref_mqtt_enabled", false)) {
-            String[] topicElems = topic.split("/");
-            for (int k = 0; k < topicElems.length; k++) {
-                Log.d(TAG, "topic element: "+ topicElems[k]);
-                if (topicElems[k].equals("status")) {
+            // load mission from MQTT
+            if (topic.toLowerCase().contains(prefs.getString("pref_mqtt_clientdef", "").toLowerCase())) {
+                String[] topicElems = topic.split("/");
+                //Log.d(TAG, "last element: "+topicElems[topicElems.length-1]);
+                if (topicElems[topicElems.length-1].compareTo("mission")==0) {
+                    if (mission != null) {
+                        mission.stopMission();
+                        mission = null;
+                    }
+                    showToast("Received new mission");
+                    mission = new SurveilanceMission(this, virtualPilot);
+                    mission.parseMissionMessage(topic, msg);
+                    Log.d(TAG, "received new mission  with target: " + mission.getTargetID());
+                }
+                else if (topicElems[topicElems.length-1].compareTo("cmd")==0) {
+                    Log.d(TAG, "got command: "+msg);
+                    if (msg.compareTo("fc_start")==0)
+                        startFollowMeMissionVS();
+                    else if (msg.compareTo("fc_stop")==0)
+                        stopFollowMeMissionVS();
+                }
+            }
+            // see if the topic is one from the target robot
+            else if (mission != null && topic.toLowerCase().contains(mission.getTargetID().toLowerCase()))
+            {
+                Log.d(TAG, "targetID: "+mission.getTargetID()+" topic: "+ topic.toLowerCase());
+                String[] topicElems = topic.split("/");
+                // if robot is reporting its status
+                if (topicElems[topicElems.length-1].contains("attr") || topicElems[topicElems.length-1].contains("status")) {
                     String[] elements = msg.split("\\|");
                     double lat = 0;
                     double lon = 0;
+                    double speed = 0;
                     for (int i = 0; i < elements.length; i++) {
-                        Log.d(TAG, "status element: "+ elements[i]);
+                        //Log.d(TAG, "status element: " + elements[i]);
                         if (elements[i].equals("lat"))
                             lat = Double.parseDouble(elements[i + 1]);
                         if (elements[i].equals("lon"))
                             lon = Double.parseDouble(elements[i + 1]);
+                        if (elements[i].equals("v"))
+                            speed = Double.parseDouble(elements[i + 1]);
                     }
                     Log.d(TAG, "new lat/lon: "+lat+","+lon);
                     //if (lat != 0.0 && lon != 0.0) {
                     double finalLat = lat;
                     double finalLon = lon;
-
+                    double finalSpeed = speed;
+                    virtualPilot.setTarget(new LocationCoordinate3D(finalLat,finalLon,(float)mission.getTargetAltitude()),finalSpeed);
                     mMQTTHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (mFollowLocation == null)
-                                mFollowLocation = new Location("dummyprovider");
-                            mFollowLocation.setLatitude(finalLat);
-                            mFollowLocation.setLongitude(finalLon);
+                            //if (mFollowLocation == null)
+                            //    mFollowLocation = new Location("dummyprovider");
+                            //mFollowLocation.setLatitude(finalLat);
+                            //mFollowLocation.setLongitude(finalLon);
                             Log.d(TAG,"parseMqttMessage call updateMapPoint");
-                            updateMapPoint(mFollowLocation);
+                            virtualPilot.setTarget(new LocationCoordinate3D(finalLat,finalLon,(float)mission.getTargetAltitude()),finalSpeed);
+                            //updateMapPoint(mFollowLocation);
+                            updateMapPoint(finalLat, finalLon);
                         }
                     });
-
                 }
             }
         }
@@ -505,6 +562,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             notifyStatusChange();
                             setupVirtualController();
                             setupCamera();
+                            // If camera set to Photo Mode
+                            /* TODO: Check this whole init process to be more consistent */
+                            if (prefs.getBoolean("pref_enable_photo", false)) {
+                                mPhotoSender = new PhotoSender(prefs.getString("pref_photo_host", "127.0.0.1"), prefs.getString("pref_photo_port", "5600"), mCamera);
+                            }
+                            virtualPilot = new VirtualPilot(prefs, flightController);
                             //setupFollowMeMission();
                         }
 
@@ -640,23 +703,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void startFollowMeMissionVS() {
-        if (mProduct != null && mMissionState != MissionStatus.RUNNING)
+        if (mission == null)
         {
-            targetAlt = Float.parseFloat(prefs.getString("pref_flight_alt", "40.0"));
+            showToast("Mission not set");
+            return;
+        }
+        if (mProduct != null && mission.getState() != MissionStatus.RUNNING)
+        {
+            //targetAlt = Float.parseFloat(prefs.getString("pref_flight_alt", "40.0"));
             maxHorizontalSpeed = Float.parseFloat(prefs.getString("pref_flight_speed", "5"));
-            if (null == positionObserverTimer) {
-                positionObserverTask = new PositionObserverTask();
-                positionObserverTimer = new Timer();
-                positionObserverTimer.schedule(positionObserverTask, 50, 200);
+            if (virtualPilot == null) {
+                Log.d(TAG, "startFollowMeMissionVS: virtual pilot was null, creating one");
+                virtualPilot = new VirtualPilot(prefs, flightController);
             }
+            if (mission == null) {
+                Log.d(TAG, "startFollowMeMissionVS: mission was null, creating one");
+                mission = new SurveilanceMission(this,virtualPilot);
+            }
+            virtualPilot.setTargetAlt(50.0);
+            mission.startMission();
 
-            if (null == sendVirtualStickDataTimer) {
-                sendVirtualStickDataTask = new SendVirtualStickDataTask();
-                sendVirtualStickDataTimer = new Timer();
-                sendVirtualStickDataTimer.schedule(sendVirtualStickDataTask, 100, 200);
-            }
+            dataUpdateTask = new DataUpdateTask();
+            dataObserverTimer = new Timer();
+            dataObserverTimer.schedule(dataUpdateTask, 50, 200);
+
             setGimbalPitch(-90f);
-            startRecording();
+            if (prefs.getBoolean("pref_enable_video", false)) {
+                startRecording();
+            }
             mMissionState = MissionStatus.RUNNING;
             mRecordingText.setText("RUN");
         }
@@ -664,24 +738,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void stopFollowMeMissionVS() {
-        if (mMissionState == MissionStatus.RUNNING) {
-            if (null != sendVirtualStickDataTimer) {
-                if (sendVirtualStickDataTask != null) {
-                    sendVirtualStickDataTask.cancel();
+        if (mission != null && mission.getState() == MissionStatus.RUNNING) {
+            mission.stopMission();
+            if (null != dataObserverTimer) {
+                if (dataUpdateTask != null) {
+                    dataUpdateTask.cancel();
                 }
-                sendVirtualStickDataTimer.cancel();
-                sendVirtualStickDataTimer.purge();
-                sendVirtualStickDataTimer = null;
-                sendVirtualStickDataTask = null;
-            }
-            if (null != positionObserverTimer) {
-                if (positionObserverTask != null) {
-                    positionObserverTask.cancel();
-                }
-                positionObserverTimer.cancel();
-                positionObserverTimer.purge();
-                positionObserverTimer = null;
-                positionObserverTask = null;
+                dataObserverTimer.cancel();
+                dataObserverTimer.purge();
+                dataObserverTimer = null;
+                dataUpdateTask = null;
             }
             flightController.setVirtualStickModeEnabled(false, new CommonCallbacks.CompletionCallback() {
                 @Override
@@ -713,7 +779,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void startRecording() {
-        mProduct.getCamera().startRecordVideo(new CommonCallbacks.CompletionCallback() {
+        mCamera.startRecordVideo(new CommonCallbacks.CompletionCallback() {
             @Override
             public void onResult(DJIError djiError) {
                 showToast("start recording: " + (djiError == null ? "Successfully" : djiError.getDescription()));
@@ -729,10 +795,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
         });
+        Log.d(TAG, "startRecording: starting live stream");
+        if (mVideoStream != null)
+        {
+            int ret = mVideoStream.startLiveShow();
+            if (ret == -1)
+            {
+                showToast("isLiveStreamManagerOn returned false");
+                Log.e(TAG, "startRecording: isLiveStreamManagerOn returned false");
+            }
+            else if (ret == -2)
+            {
+                showToast("Live Video Stream was already ON");
+                Log.e(TAG, "startRecording: Live Video Stream was already ON");
+            }
+            else
+            {
+                showToast("Live Video Stream started");
+                Log.d(TAG, "startRecording: Live Video Stream started");
+            }
+        }
+        else {
+            showToast("Live Video Stream was null");
+            Log.e(TAG, "startRecording: mVideoStream was null");
+        }
     }
 
     private void stopRecording() {
-        mProduct.getCamera().stopRecordVideo(new CommonCallbacks.CompletionCallback() {
+        mCamera.stopRecordVideo(new CommonCallbacks.CompletionCallback() {
             @Override
             public void onResult(DJIError djiError) {
                 showToast("stop recording: " + (djiError == null ? "Successfully" : djiError.getDescription()));
@@ -750,6 +840,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
         });
+        if (mVideoStream != null)
+            mVideoStream.stopLiveShow();
     }
 
     private void setUpListener() {
@@ -827,43 +919,90 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 flightController.setStateCallback(new FlightControllerState.Callback() {
                         @Override
                         public void onUpdate(FlightControllerState state){
-                           //Log.d(TAG,"FlightControllerState.Callback onUpdate: " + flightController.getCompass().getHeading());
                             mDroneHeading = flightController.getCompass().getHeading();
-
+                            //Log.d(TAG,"FlightControllerState.Callback onUpdate: " + mDroneHeading);
                             mDroneLocation = state.getAircraftLocation();
                             //sendDroneLocation(mDroneLocation);
-                            updateMapDrone(mDroneLocation);
+                            // Slow down MQTT reporting in order to save bandwidth & resource
+                            if (locationCounter % 4 == 0)
+                            {
+                                sendDroneLocation(mDroneLocation);
+                                locationCounter = 0;
+                            }
+                            locationCounter += 1;
+
+                            if (photoCounter % 10 == 0)
+                            {
+                                // if photo mode enabled take also photo at this point
+                                if (mission != null && mission.getState() == MissionStatus.RUNNING && prefs.getBoolean("pref_enable_photo", false)) {
+                                    mPhotoSender.takePicture();
+                                    photoCounter = 0;
+                                }
+                            }
+                            photoCounter += 1;
+                            updateMapDrone(mDroneLocation.getLatitude(), mDroneLocation.getLongitude());
                             if (mLocationText != null)
                                 mLocationText.setText(String.format("%,.4f", mDroneLocation.getLatitude())+","+String.format("%,.4f", mDroneLocation.getLongitude())+","+String.format("%,.1f", mDroneLocation.getAltitude()));
                      }
                 });
+                mProduct.getBattery().setStateCallback(mBatteryCallback);
                 // Set position observer task
-                positionObserverTask = new PositionObserverTask();
-                positionObserverTimer = new Timer();
-                positionObserverTimer.schedule(positionObserverTask, 50, 200);
+                dataUpdateTask = new DataUpdateTask();
+                dataObserverTimer = new Timer();
+                dataObserverTimer.schedule(dataUpdateTask, 50, 200);
+
             }
         }
         //setupFollowMeMission();
     }
 
-    private void sendControllerLocation(Location ctrlLocation) {
-        Log.d(TAG, "sendDroneLocation publish drone location");
-        if (ctrlLocation.getLatitude() != 0 && ctrlLocation.getLongitude() != 0) {
-            String msrg = String.format("lat|%.6f|lon|%.6f|ele|%.1f|h|%.1f|s|0|stat|0",ctrlLocation.getLatitude(),ctrlLocation.getLongitude(),ctrlLocation.getAltitude(),mDroneHeading);
-            mMQTTclient.publish(msrg,mMQTTclient);
+    /**
+     * Read Data here from the virtual pilot and update UI fields accordingly
+     */
+    class DataUpdateTask extends TimerTask {
+        @Override
+        public void run() {
+            if (virtualPilot != null)
+            {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (virtualPilot != null && virtualPilot.getCurrentPosition() != null) {
+                            if (mAltitudeText != null)
+                                mAltitudeText.setText(String.format("%.1f", virtualPilot.getCurrentPosition().getAltitude()));
+                            else
+                                mAltitudeText = findViewById(R.id.text_altitude);
+
+                            if (mDeltaText != null) {
+                                mDeltaText.setText(String.format("%.1f,%.1f", virtualPilot.getDeltaDistance(), virtualPilot.getDeltaAltitude()));
+                            } else
+                                mDeltaText = findViewById(R.id.text_delta);
+                        }
+                    }
+                });
+            }
         }
+    };
+
+    private void sendControllerLocation(double lat, double lon) {
+        Log.d(TAG, "sendControllerLocation publish drone location");
+        String msrg = String.format("lat|%.6f|lon|%.6f|ele|%.1f|h|%.1f|s|0|stat|0",lat,lon,0,mDroneHeading);
+        mMQTTclient.publish(msrg,mMQTTclient);
     }
 
     private void sendDroneLocation(LocationCoordinate3D mDroneLocation) {
-        Log.d(TAG, "sendDroneLocation publish drone location");
+        //Log.d(TAG, "sendDroneLocation publish drone location");
         if (mDroneLocation.getLatitude() != 0 && mDroneLocation.getLongitude() != 0) {
-            String msrg = String.format("lat|%.6f|lon|%.6f|ele|%.1f|h|%.1f|s|0|stat|0",mDroneLocation.getLatitude(),mDroneLocation.getLongitude(),mDroneLocation.getAltitude(),mDroneHeading);
-            mMQTTclient.publish(msrg,mMQTTclient);
+            int state = 0;
+            if (mission != null) {
+                state = mission.getState();
+            }
+            String msrg = String.format("lat|%.6f|lon|%.6f|ele|%.1f|h|%.1f|s|0|stat|%d",mDroneLocation.getLatitude(),mDroneLocation.getLongitude(),mDroneLocation.getAltitude(),mDroneHeading, state);
+            mMQTTclient.publishDroneLocation(msrg,mMQTTclient);
         }
     }
 
-
-    // gets real time flight data of the aircraft with the given serial number
+   // gets realtime flight data of the aircraft with the given serial number
     private void getRealTimeData() {
         final ArrayList<String> serialNumbers = new ArrayList<>(1);
         serialNumbers.add(serialNumber);
@@ -896,6 +1035,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void landDrone() {
+        if (virtualPilot.isPilotActive())
+        {
+            virtualPilot.stopPilot();
+        }
         if (flightController != null) {
             showToast("Land Drone");
             flightController.startLanding(new CommonCallbacks.CompletionCallback() {
@@ -915,14 +1058,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void takeOff() {
+        Log.d(TAG, "takeOff");
         if (flightController != null) {
             showToast("ready to start FM mission taking off");
             flightController.startTakeoff(new CommonCallbacks.CompletionCallback() {
                 @Override
                 public void onResult(DJIError djiError) {
-                    showToast("Take OFF Start: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+
                     if (djiError != null)
                         Log.d(TAG, "Take OFF Start: " + djiError.getDescription() + " (" + djiError.getErrorCode() + ")");
+                    else {
+                        showToast("Take OFF Start: " + (djiError == null ? "Successfully" : djiError.getDescription()));
+                        virtualPilot.stopPilot();
+                    }
                 }
             });
             try {
@@ -937,117 +1085,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Log.d(TAG, "setHomeFragmentRef");
         mHomeFragemnt = homeFragment;
         setUpGUIComponents();
-    }
-
-    private class SendVirtualStickDataTask extends TimerTask {
-        @Override
-        public void run() {
-            if (flightController != null) {
-                flightController.sendVirtualStickFlightControlData(new FlightControlData(roll, pitch, yaw, throttle), new CommonCallbacks.CompletionCallback() {
-                    @Override
-                    public void onResult(DJIError djiError) {
-                        if (djiError != null) {
-                            showToast(djiError.getDescription());
-                        }
-                    }
-                });
-            }
-        }
-    }
-
-    private class PositionObserverTask extends TimerTask {
-        @Override
-        public void run() {
-            //Location pointLoc = getLastBestLocation();
-            LocationCoordinate3D droneLoc = flightController.getState().getAircraftLocation();
-            // Control Altitude
-            mDroneLocation = droneLoc;
-            updateMapDrone(droneLoc);
-            if(mTOButton == null)
-                setUpGUIComponents();
-
-            float altMargin = 0.5f;
-            float deltaAlt = targetAlt - droneLoc.getAltitude();
-            if (deltaAlt-altMargin > 0)
-                throttle = 2;
-            else if (deltaAlt+altMargin < 0)
-                throttle = (float) -0.5;
-            else
-                throttle = 0;
-
-            // Control heading
-            float heading = flightController.getCompass().getHeading();
-            float yawSpeed = Float.parseFloat(prefs.getString("pref_flight_anglespeed","1"));
-            if (heading < 0)
-                yaw = yawSpeed;
-            else if (heading > 0)
-                yaw = -1 * yawSpeed;
-            else
-                yaw = 0;
-
-            // Control position
-            pitch = 0;
-            roll = 0;
-            deltaLatM = 0f;
-            deltaLonM = 0f;
-            if(mFollowLocation != null) {
-                float deltaLat = (float) (mFollowLocation.getLatitude() - droneLoc.getLatitude());
-                float deltaLon = (float) (mFollowLocation.getLongitude() - droneLoc.getLongitude());
-                // Convert to meters:
-                deltaLatM = deltaLat * 111540; // Coords to meters
-                deltaLonM = deltaLon * 111540; // Coords to meters and  then accont for latitude multiplier
-                deltaLonM = (float) (deltaLonM*Math.cos(Math.toRadians(mFollowLocation.getLatitude())));
-                determineStickPosition(deltaLatM, deltaLonM);
-
-            }
-            if (mBatteryText != null) {
-                mProduct.getBattery().setStateCallback(mBatteryCallback);
-            }
-            else
-                mBatteryText = findViewById(R.id.text_battery);
-
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if(mAltitudeText != null)
-                        mAltitudeText.setText(String.format("%.1f", droneLoc.getAltitude()));
-                    else
-                        mAltitudeText = findViewById(R.id.text_altitude);
-
-                    if(mDeltaText != null)
-                    {
-                        mDeltaText.setText(String.format("%.1f,%.1f",deltaLatM,deltaLonM));
-                    }
-                    else
-                        mDeltaText = findViewById(R.id.text_delta);
-
-                    String msg = String.format("d_heading: %.1f d_ele: %.1f d_lat: %.1f d_lon: %.1f", heading, deltaAlt, deltaLatM, deltaLonM);
-                    Log.d(TAG, msg);
-                }
-            });
-        }
-    }
-
-    private void determineStickPosition(float deltaLatM, float deltaLonM) {
-
-        if (deltaLatM > 0) // move south
-        {
-            if (deltaLatM > maxHorizontalSpeed)
-                deltaLatM = maxHorizontalSpeed;
-        }
-        else if (deltaLatM < 0) // move north
-            if (deltaLatM < -1f * maxHorizontalSpeed)
-                deltaLatM = -1f * maxHorizontalSpeed;
-        pitch = deltaLatM;
-
-        if (deltaLonM > 0) // move west
-        {
-            if (deltaLonM > maxHorizontalSpeed)
-                deltaLonM = maxHorizontalSpeed;
-        }
-        else if (deltaLonM < 0) // move east
-            if (deltaLonM < maxHorizontalSpeed)
-                deltaLonM = -1f * maxHorizontalSpeed;
-        roll = deltaLonM;
     }
 }

@@ -87,10 +87,24 @@ public class MapsFragment extends Fragment {
         mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(18), 1, null);
     }
+    public void updateRobotMarker(double lat, double lon) {
+        LatLng point = new LatLng(lat,lon);
+        if (mRobotMarker != null) {
+            mRobotMarker.setPosition(point);
+        }
+        else {
+            MarkerOptions mRobotMarkerOpts = new MarkerOptions().position(point).title("robot")
+                    .icon(BitmapDescriptorFactory.fromResource(R.mipmap.robot_icon));
+            mRobotMarker = mMap.addMarker(mRobotMarkerOpts);
+        }
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(18), 1, null);
+    }
 
-    public void updateDroneMarker(LocationCoordinate3D robot) {
-        LatLng point = new LatLng(robot.getLatitude(),robot.getLongitude());
-        Log.d(TAG, "drone point: "+point.toString());
+    public void updateDroneMarker(double lat, double lon) {
+//    public void updateDroneMarker(LocationCoordinate3D robot) {
+        LatLng point = new LatLng(lat,lon);
+        //Log.d(TAG, "drone point: "+point.toString());
         if (mDroneMarker != null)
             mDroneMarker.setPosition(point);
         else {

@@ -46,11 +46,32 @@
             app:title="@string/pref_video_port" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:key="photo_prefs"
+        app:title="@string/photo_settings">
+
+        <SwitchPreferenceCompat
+            app:key="pref_enable_photo"
+            app:title="@string/pref_enable_photo"
+            app:defaultValue="false"
+            app:summaryOff="@string/photo_summary_off"
+            app:summaryOn="@string/photo_summary_on"/>
+        <EditTextPreference
+            app:defaultValue="127.0.0.1"
+            app:dependency="pref_enable_photo"
+            app:key="pref_photo_ip"
+            app:title="@string/pref_photo_ip" />
+        <EditTextPreference
+            app:defaultValue="5600"
+            app:dependency="pref_enable_photo"
+            app:key="pref_photo_port"
+            app:title="@string/pref_photo_port" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:key="flight_prefs"
         app:title="@string/flight_settings">
 
         <EditTextPreference
-            app:defaultValue="30"
+            app:defaultValue="30.0"
             app:key="pref_flight_alt"
             app:title="@string/pref_flight_alt" />
         <EditTextPreference
