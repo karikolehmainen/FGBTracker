@@ -87,6 +87,7 @@ public class MapsFragment extends Fragment {
         mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(18), 1, null);
     }
+
     public void updateRobotMarker(double lat, double lon) {
         LatLng point = new LatLng(lat,lon);
         if (mRobotMarker != null) {
@@ -100,7 +101,12 @@ public class MapsFragment extends Fragment {
         mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
         mMap.animateCamera(CameraUpdateFactory.zoomTo(18), 1, null);
     }
-
+    public void centerMapTo(LatLng point)
+    {
+        Log.d(TAG, "centerMapTo: "+point.toString());
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(16), 1, null);
+    }
     public void updateDroneMarker(double lat, double lon) {
 //    public void updateDroneMarker(LocationCoordinate3D robot) {
         LatLng point = new LatLng(lat,lon);

@@ -16,6 +16,7 @@ import android.os.Looper;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentContainerView;
+import androidx.navigation.NavDestination;
 import androidx.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
@@ -37,6 +38,7 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.annotation.NonNull;
@@ -97,6 +99,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public static boolean FLAG_PREFS_CHANGED = false;
     public static boolean FLAG_TELEMETRY_ADDRESS_CHANGED = false;
     public static boolean FLAG_VIDEO_ADDRESS_CHANGED = false;
+    private String videoTitle;
+    private String droneTitle;
     private ActivityMainBinding binding;
     private static final String TAG = MainActivity.class.getName();
     public static final String FLAG_CONNECTION_CHANGE = "dji_sdk_connection_change";
@@ -145,13 +149,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button mLandButton;
 
     private float mDroneHeading;
-    private double homeLatitude;
-    private FlightMode flightState;
-    private double homeLongitude;
     private FollowMeMissionOperatorListener listener;
 
     private boolean isGPS = false;
-    private Timer sendVirtualStickDataTimer;
     private Timer dataObserverTimer;
     private DataUpdateTask dataUpdateTask;
     private LocationCallback locationCallback;
@@ -164,8 +164,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public MQTTClient mMQTTclient;
     private float targetAlt;
     private float maxHorizontalSpeed;
-    private MapsActivity mMapsActivity;
-    private HomeFragment mHomeFragemnt;
     private BatteryState.Callback mBatteryCallback;
 
 
@@ -178,6 +176,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private PhotoSender mPhotoSender;
     private int photoCounter;
     private Camera mCamera;
+    private String missionTopic;
+    private NavController navController;
 
 
     private void getLocation() {
@@ -246,8 +246,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         BottomNavigationView navView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
+        droneTitle = getResources().getString (R.string.title_home_header);
+        videoTitle = getResources().getString (R.string.title_video_header);
         AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(R.id.navigation_home, R.id.navigation_video, R.id.navigation_settings).build();
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
+        navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
+        navController.addOnDestinationChangedListener(new NavController.OnDestinationChangedListener() {
+            @Override
+            public void onDestinationChanged(@NonNull NavController controller, @NonNull NavDestination destination, @Nullable Bundle arguments) {
+                if (destination.getId() == R.id.navigation_home)
+                    destination.setLabel(droneTitle);
+                if (destination.getId() == R.id.navigation_video)
+                    destination.setLabel(videoTitle);
+                }
+
+            }
+        );
+
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
 
@@ -255,11 +269,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkAndRequestPermissions();
         }
-        Fragment mapsFragment = getSupportFragmentManager().findFragmentById(R.id.map);
-        if (mapsFragment != null && mapsFragment.getActivity() instanceof MapsActivity)
-            mMapsActivity = (MapsActivity) mapsFragment.getActivity();
-
-        Fragment homeFragment = getSupportFragmentManager().findFragmentById(R.id.navigation_home);
 
         setUpGUIComponents();
 
@@ -403,7 +412,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
     }
-    private void updateMapPoint(double lat, double lon) {
+    private void
+    updateMapPoint(double lat, double lon) {
         Log.d(TAG, "updateMapPoint0 " + lat + "," + lon);
         if (mFMButton == null)
             setUpGUIComponents();
@@ -439,12 +449,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (topic.toLowerCase().contains(prefs.getString("pref_mqtt_clientdef", "").toLowerCase())) {
                 String[] topicElems = topic.split("/");
                 //Log.d(TAG, "last element: "+topicElems[topicElems.length-1]);
+                /*TODO:  This is sketchy if mission specific topic contains string "mission" */
                 if (topicElems[topicElems.length-1].compareTo("mission")==0) {
                     if (mission != null) {
                         mission.stopMission();
                         mission = null;
                     }
                     showToast("Received new mission");
+                    if (mission != null)
+                    {
+                        mission.stopMission();
+                    }
                     mission = new SurveilanceMission(this, virtualPilot);
                     mission.parseMissionMessage(topic, msg);
                     Log.d(TAG, "received new mission  with target: " + mission.getTargetID());
@@ -453,12 +468,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Log.d(TAG, "got command: "+msg);
                     if (msg.compareTo("fc_start")==0)
                         startFollowMeMissionVS();
-                    else if (msg.compareTo("fc_stop")==0)
+                    //else if (msg.compareTo("fc_stop")==0)
+                    //    returnHome();
+                    else if (msg.compareTo("fc_pause")==0)
                         stopFollowMeMissionVS();
+                    //else if (msg.compareTo("fc_resume")==0)
+                    //    resumeFollowMeMissionVS();
                 }
             }
             // see if the topic is one from the target robot
-            else if (mission != null && topic.toLowerCase().contains(mission.getTargetID().toLowerCase()))
+            else if (mission != null && topic.toLowerCase().compareTo(missionTopic.toLowerCase()) == 0)
             {
                 Log.d(TAG, "targetID: "+mission.getTargetID()+" topic: "+ topic.toLowerCase());
                 String[] topicElems = topic.split("/");
@@ -702,25 +721,57 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    public void displayActiveMission(String name)
+    {
+        droneTitle = getResources().getString (R.string.title_home_header);
+        videoTitle = getResources().getString (R.string.title_video_header);
+        droneTitle = droneTitle + "\t\t\t\t"+name;
+        videoTitle = videoTitle + "\t\t\t\t"+name;
+        NavDestination dest = navController.getCurrentDestination();
+        if (dest.getId() == R.id.navigation_home)
+            dest.setLabel(droneTitle);
+        else if (dest.getId() == R.id.navigation_video)
+            dest.setLabel(videoTitle);
+        navController.navigate(dest.getId());
+
+    }
+
+    public void centerMapToHome(double lat, double lon)
+    {
+        /*runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+        */
+                FragmentContainerView temp = findViewById(R.id.situmap);
+                if (temp != null) {
+                    ((MapsFragment) temp.getFragment()).centerMapTo(new LatLng(lat, lon));
+                    Log.d(TAG, "centerMapToHome: ");
+                } else {
+                    Log.e(TAG, "centerMapToHome: R.id.situmap not found or null");
+                }
+        /*    }
+        });
+         */
+    }
+
     private void startFollowMeMissionVS() {
         if (mission == null)
         {
             showToast("Mission not set");
+            Log.d(TAG, "startFollowMeMissionVS: mission was null, creating one");
+            mission = new SurveilanceMission(this,virtualPilot);
             return;
         }
         if (mProduct != null && mission.getState() != MissionStatus.RUNNING)
         {
-            //targetAlt = Float.parseFloat(prefs.getString("pref_flight_alt", "40.0"));
             maxHorizontalSpeed = Float.parseFloat(prefs.getString("pref_flight_speed", "5"));
             if (virtualPilot == null) {
                 Log.d(TAG, "startFollowMeMissionVS: virtual pilot was null, creating one");
                 virtualPilot = new VirtualPilot(prefs, flightController);
             }
-            if (mission == null) {
-                Log.d(TAG, "startFollowMeMissionVS: mission was null, creating one");
-                mission = new SurveilanceMission(this,virtualPilot);
-            }
-            virtualPilot.setTargetAlt(50.0);
+
+            /* TODO: make & call here function to take drone off ground IF and only IF it is already not off the ground */
+            virtualPilot.setTargetAlt(mission.getTargetAltitude());
             mission.startMission();
 
             dataUpdateTask = new DataUpdateTask();
@@ -734,6 +785,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mMissionState = MissionStatus.RUNNING;
             mRecordingText.setText("RUN");
         }
+
 
     }
 
@@ -880,7 +932,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     
     private void updateFollowMeMissionState() {
         if (followmeOperator != null && followmeOperator.getCurrentState() != null) {
-            String msg = String.format("H Coords: (%.03f.4,%.03f.4) State %s M_State %s T Coords(%.03f.4,%.03f.4)", homeLatitude, homeLongitude, flightState.name(), followmeOperator.getCurrentState().getName(), followmeOperator.getFollowingTarget().getLatitude(), followmeOperator.getFollowingTarget().getLongitude());
+            String msg = String.format("H Coords: M_State %s T Coords(%.03f.4,%.03f.4)", followmeOperator.getCurrentState().getName(), followmeOperator.getFollowingTarget().getLatitude(), followmeOperator.getFollowingTarget().getLongitude());
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -890,12 +942,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             });
 
             Log.d(TAG, msg);
-        } else {
-            String msg = String.format("H Coords: (%.03f.4,%.03f.4) State %s", homeLatitude, homeLongitude, flightState.name());
+        }
+        //else {
+            //String msg = String.format("H Coords: (%.03f.4,%.03f.4) State %s", homeLatitude, homeLongitude, flightState.name());
             //if (mLocationText != null)
             //    mLocationText.setText(msg);
-            Log.d(TAG, msg);
-        }
+            //Log.d(TAG, msg);
+        //}
     }
 
     private void initFC() {
@@ -954,6 +1007,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
         //setupFollowMeMission();
+    }
+
+    public void setMissionTopic(String targetMQTT) {
+        missionTopic = targetMQTT;
     }
 
     /**
@@ -1083,7 +1140,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void setHomeFragmentRef(HomeFragment homeFragment) {
         Log.d(TAG, "setHomeFragmentRef");
-        mHomeFragemnt = homeFragment;
         setUpGUIComponents();
     }
 }

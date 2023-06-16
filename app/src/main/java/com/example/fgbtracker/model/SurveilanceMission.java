@@ -21,12 +21,14 @@ public class SurveilanceMission {
     private double homeLat;
     private double homeLon;
     private double homeGotoAlt;
+    private String missionName;
 
     public SurveilanceMission(MainActivity mainAct, VirtualPilot pilot)
     {
         mainActivity = mainAct;
         virtualPilot = pilot;
         state = MissionStatus.PLANNED;
+        missionName = "";
     }
     public void parseMissionMessage(String topic, String message)
     {
@@ -42,7 +44,7 @@ public class SurveilanceMission {
             JSONObject reader = new JSONObject(mission);
             JSONObject target = reader.getJSONObject("target");
             JSONObject parameters = reader.getJSONObject("parameters");
-
+            missionName = reader.getString("name");
             targetMQTT = target.getString("MQTTtopic");
             surveilanceAltitude = parameters.getDouble("altitude");
             batteryLimit = parameters.getInt("battery_limit");
@@ -54,7 +56,8 @@ public class SurveilanceMission {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
+        mainActivity.displayActiveMission(missionName);
+        mainActivity.centerMapToHome(homeLat, homeLon);
     }
     public String getTargetID(){
         return targetID;
@@ -72,6 +75,7 @@ public class SurveilanceMission {
     public void startMission() {
         Log.e(TAG, "startMission");
         mainActivity.mMQTTclient.subscribeMqttChannel(targetMQTT);
+        mainActivity.setMissionTopic(targetMQTT);
         if (virtualPilot != null) {
             Log.e(TAG, "Virtual pilot OK, starting");
             virtualPilot.startPilot();

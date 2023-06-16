@@ -75,5 +75,7 @@
     <string name="photo_summary_on">Send photo stream to host</string>
     <string name="pref_photo_ip">Photo service address</string>
     <string name="pref_photo_port">Photo service port</string>
+    <string name="title_home_header">Drone</string>
+    <string name="title_video_header">Video</string>
 
 </resources>
